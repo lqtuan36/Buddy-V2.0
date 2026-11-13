@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "buddy-ai-personal"
+  },
+  "targets": {
+    "ai-buddy-913c2": {
+      "hosting": {
+        "buddyfpt": [
+          "ai-buddy-fpt"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}
