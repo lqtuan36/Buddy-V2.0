@@ -255,7 +255,7 @@ export const BuddyMonthlyTrackerView: React.FC<{
                 Bảng theo dõi thói quen tháng
               </span>
               <h1 className="font-kids text-lg sm:text-xl font-extrabold text-[#23324D]">
-                Hành trình của {data.profile.displayName}
+                Hành trình của mình · {data.profile.displayName}
               </h1>
             </div>
           </div>
@@ -287,7 +287,7 @@ export const BuddyMonthlyTrackerView: React.FC<{
       {/* Habit / Task Filter Segmented Bar */}
       <section className="space-y-2">
         <p className="text-xs font-kids font-bold text-[#23324D]/70 px-1">
-          Lọc theo từng thói quen của con:
+          Lọc theo từng thói quen của mình:
         </p>
         <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
           <button
@@ -448,8 +448,8 @@ export const BuddyMonthlyTrackerView: React.FC<{
           ) : (
             <p className="text-xs text-[#23324D]/70 bg-[#F7F9FD] rounded-2xl p-3.5">
               {selectedDaySummary.isFuture
-                ? 'Ngày này chưa tới. Hẹn con cùng Buddy thực hiện việc tốt vào ngày đó nhé!'
-                : 'Nếu con đã thực hiện việc tốt ở ngoài ứng dụng trong ngày này, con hoặc ba mẹ có thể bấm xác nhận bên dưới nhé.'}
+                ? 'Ngày này chưa tới. Hẹn bạn cùng mình thực hiện việc tốt vào ngày đó nhé!'
+                : 'Nếu bạn đã thực hiện việc tốt ở ngoài ứng dụng trong ngày này, bạn hoặc ba mẹ có thể bấm xác nhận bên dưới nhé.'}
             </p>
           )}
 
@@ -458,7 +458,7 @@ export const BuddyMonthlyTrackerView: React.FC<{
             <div className="pt-2 border-t border-[#23324D]/8 space-y-2">
               <div className="flex items-center gap-1.5 text-xs font-kids font-extrabold text-[#23324D]/80">
                 <Sparkles className="w-3.5 h-3.5 text-[#3978F6]" />
-                <span>Ghi nhận việc con đã làm ngoài ứng dụng ({selectedDaySummary.dateKey}):</span>
+                <span>Ghi nhận việc mình đã làm ngoài ứng dụng ({selectedDaySummary.dateKey}):</span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

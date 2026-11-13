@@ -45,7 +45,7 @@ export function createInitialSeedData(): BuddyAppData {
           {
             id: 'step-bp-1',
             stepNumber: 1,
-            actionTitle: 'Bé xem thời khóa biểu ngày mai',
+            actionTitle: 'Xem thời khóa biểu ngày mai',
             instruction: 'Bạn nhìn thời khóa biểu trên bàn học để biết ngày mai có những môn học nào nhé.',
             simpleExplanation: 'Thời khóa biểu ghi tên các môn học từng ngày. Mình chỉ cần đọc cột của ngày mai thôi nè!',
             buddyPraise: 'Tuyệt lắm! Xem thời khóa biểu giúp bạn không bao giờ quên sách vở.',
@@ -54,7 +54,7 @@ export function createInitialSeedData(): BuddyAppData {
           {
             id: 'step-bp-2',
             stepNumber: 2,
-            actionTitle: 'Bé lấy sách và vở theo môn học',
+            actionTitle: 'Lấy sách và vở theo môn học',
             instruction: 'Bạn lấy đủ sách giáo khoa và vở bài tập của các môn ngày mai đặt ra bàn học nhé.',
             simpleExplanation: 'Mỗi môn học trong thời khóa biểu sẽ có 1 quyển sách và 1 quyển vở đi cùng nhau đó bạn.',
             buddyPraise: 'Tuyệt vời! Bạn đã lấy đủ sách và vở cho các môn ngày mai rồi!',
@@ -63,7 +63,7 @@ export function createInitialSeedData(): BuddyAppData {
           {
             id: 'step-bp-3',
             stepNumber: 3,
-            actionTitle: 'Bé xếp sách vào balo ngay ngắn',
+            actionTitle: 'Xếp sách vào balo ngay ngắn',
             instruction: 'Bạn đặt quyển sách to ở phía sau sát lưng cặp, quyển vở nhỏ hơn ở phía trước trong ngăn chính.',
             simpleExplanation: 'Xếp quyển to trước, quyển nhỏ sau giúp cặp sách đứng thẳng và không bị quăn góc vở đó bạn.',
             buddyPraise: 'Khéo tay quá! Sách vở nằm ngay ngắn trong balo rồi kìa.',
@@ -72,7 +72,7 @@ export function createInitialSeedData(): BuddyAppData {
           {
             id: 'step-bp-4',
             stepNumber: 4,
-            actionTitle: 'Bé kiểm tra hộp bút đầy đủ',
+            actionTitle: 'Kiểm tra hộp bút đầy đủ',
             instruction: 'Bạn mở hộp bút xem đã có đủ bút chì, thước kẻ và tẩy chưa, rồi đặt vào ngăn phụ nhé.',
             simpleExplanation: 'Mình đếm xem có ít nhất 2 cây bút, 1 cục tẩy và 1 cây thước kẻ trong hộp bút là đủ rồi!',
             buddyPraise: 'Chuẩn bị hộp bút kỹ càng như vậy đi học sẽ rất yên tâm!',
@@ -81,7 +81,7 @@ export function createInitialSeedData(): BuddyAppData {
           {
             id: 'step-bp-5',
             stepNumber: 5,
-            actionTitle: 'Bé đặt cặp ở vị trí phù hợp',
+            actionTitle: 'Đặt cặp ở vị trí phù hợp',
             instruction: 'Bạn để bình nước vào túi hông, kéo khóa cặp lại và đặt cặp ngay ngắn cạnh bàn học cho sáng mai.',
             simpleExplanation: 'Đặt cặp cố định cạnh bàn học giúp sáng mai bạn tìm thấy ngay mà không phải vội vàng.',
             buddyPraise: 'Hoan hô Minh Anh! Cặp sách của bạn đã sẵn sàng 100% cho ngày mai rồi!',
@@ -735,7 +735,7 @@ export function createInitialSeedData(): BuddyAppData {
         slug: 'gratitude',
         stageOrder: 1,
         title: 'Lòng biết ơn',
-        subtitle: 'Nhận ra và trân trọng những điều ấm áp quanh con mỗi ngày',
+        subtitle: 'Nhận ra và trân trọng những điều ấm áp quanh bạn mỗi ngày',
         landmarkName: 'Chặng 1 · Khu vườn Hướng Dương',
         themeColor: 'yellow',
         illustrationKey: 'schedule-check',
@@ -751,11 +751,11 @@ export function createInitialSeedData(): BuddyAppData {
             typeLabel: 'Khám phá',
             title: 'Bữa cơm tối thơm lừng của mẹ',
             promptOrStory:
-              'Chiều đi học về, Minh Anh thấy trên bàn đã có sẵn bát canh nóng hổi và đĩa trứng cuộn vàng ươm. Mẹ mỉm cười lau giọt mồ hôi trên trán và gọi con vào ăn cơm.',
+              'Chiều đi học về, Minh Anh thấy trên bàn đã có sẵn bát canh nóng hổi và đĩa trứng cuộn vàng ươm. Mẹ mỉm cười lau giọt mồ hôi trên trán và gọi Minh Anh vào ăn cơm.',
             buddyWarmFeedback:
               'Nhận ra sự vất vả và tình thương của ba mẹ trong từng bữa ăn chính là khởi đầu đẹp nhất của lòng biết ơn đó bạn!',
             status: 'experienced',
-            childResponse: 'Con đã nghe tình huống cùng Buddy',
+            childResponse: 'Mình đã nghe tình huống cùng Buddy',
             lastUpdatedAt: `${monthKey}-02T19:00:00.000Z`,
           },
           {
@@ -792,13 +792,13 @@ export function createInitialSeedData(): BuddyAppData {
             id: 'exp-gratitude-4',
             type: 'share',
             typeLabel: 'Chia sẻ',
-            title: 'Kể cùng Buddy về nụ cười hôm nay',
+            title: 'Kể cùng mình về nụ cười hôm nay',
             promptOrStory:
-              'Khi bạn nói lời cảm ơn hoặc giúp đỡ người thân, bạn thấy nét mặt của ba mẹ thế nào và trong lòng bạn cảm thấy ra sao?',
+              'Khi bạn nói lời cảm ơn hoặc giúp đỡ người thân, bạn thấy nét mặt của ba mẹ thế nào và hôm nay bạn cảm thấy ra sao?',
             choices: [
-              'Ba mẹ cười rất tươi và xoa đầu con',
-              'Trong lòng con thấy vui và ấm áp lắm',
-              'Con muốn làm thêm nhiều việc tốt mỗi ngày',
+              'Ba mẹ cười rất tươi và xoa đầu mình',
+              'Trong lòng mình thấy vui và ấm áp lắm',
+              'Mình muốn làm thêm nhiều việc tốt mỗi ngày',
             ],
             buddyWarmFeedback:
               'Cảm ơn bạn đã chia sẻ khoảnh khắc thật đẹp! Mình rất vui khi được lắng nghe bạn.',
@@ -827,7 +827,7 @@ export function createInitialSeedData(): BuddyAppData {
             typeLabel: 'Khám phá',
             title: 'Chiếc cốc nước bị đổ trên bàn',
             promptOrStory:
-              'Lúc với tay lấy hộp bút màu, bé Nam vô tình làm đổ cốc nước ra góc bàn học làm ướt quyển truyện của chị. Không có ai ở trong phòng lúc đó cả.',
+              'Lúc với tay lấy hộp bút màu, bạn Nam vô tình làm đổ cốc nước ra góc bàn học làm ướt quyển truyện của chị. Không có ai ở trong phòng lúc đó cả.',
             buddyWarmFeedback:
               'Những lúc không có ai nhìn thấy lại chính là lúc chúng mình học được cách lắng nghe tiếng nói chân thật trong lòng.',
             status: 'not_explored',
@@ -836,9 +836,9 @@ export function createInitialSeedData(): BuddyAppData {
             id: 'exp-honesty-2',
             type: 'understand',
             typeLabel: 'Hiểu',
-            title: 'Nếu em là bạn Nam, em sẽ chọn cách nào?',
+            title: 'Nếu là bạn Nam, bạn sẽ chọn cách nào?',
             promptOrStory:
-              'Theo con, hành động nào sẽ giúp bạn Nam vừa sửa được sự cố vừa thấy nhẹ nhõm trong lòng?',
+              'Theo bạn, hành động nào sẽ giúp bạn Nam vừa sửa được sự cố vừa thấy nhẹ nhõm trong lòng?',
             choices: [
               'Lấy khăn khô lau bàn ngay rồi thành thật nói với chị để cùng hong khô quyển truyện',
               'Nhờ mẹ hướng dẫn cách lau khô trang giấy bị ướt và nhận lỗi với chị',
@@ -864,13 +864,13 @@ export function createInitialSeedData(): BuddyAppData {
             id: 'exp-honesty-4',
             type: 'share',
             typeLabel: 'Chia sẻ',
-            title: 'Tâm sự cùng Buddy về sự thật lòng',
+            title: 'Tâm sự cùng mình về sự thật lòng',
             promptOrStory:
-              'Bạn hãy kể cho mình hoặc ba mẹ nghe một lần bạn nói thật dù lúc đầu hơi lo lắng nhé.',
+              'Bạn hãy kể cho mình nghe một lần bạn nói thật dù lúc đầu hơi lo lắng nhé.',
             choices: [
-              'Nói thật xong con thấy nhẹ nhõm hơn rất nhiều',
-              'Ba mẹ không mắng mà còn chỉ cho con cách làm tốt hơn',
-              'Con hiểu rằng ai cũng có lúc nhầm lẫn, quan trọng là biết nhận lỗi',
+              'Nói thật xong mình thấy nhẹ nhõm hơn rất nhiều',
+              'Ba mẹ không mắng mà còn chỉ cho mình cách làm tốt hơn',
+              'Mình hiểu rằng ai cũng có lúc nhầm lẫn, quan trọng là biết nhận lỗi',
             ],
             buddyWarmFeedback:
               'Cảm ơn bạn đã tâm sự thật lòng cùng mình!',
@@ -899,7 +899,7 @@ export function createInitialSeedData(): BuddyAppData {
             typeLabel: 'Khám phá',
             title: 'Cánh tay giơ cao trong giờ học',
             promptOrStory:
-              'Cô giáo đặt một câu hỏi thú vị trên lớp. Bé Mai có một ý tưởng trong đầu nhưng tim đập thình thịch vì sợ mình trả lời chưa hoàn toàn đúng.',
+              'Cô giáo đặt một câu hỏi thú vị trên lớp. Bạn Mai có một ý tưởng trong đầu nhưng tim đập thình thịch vì sợ mình trả lời chưa hoàn toàn đúng.',
             buddyWarmFeedback:
               'Dũng cảm không phải là không bao giờ hồi hộp, mà là dù hơi run nhưng vẫn dám giơ tay thử sức đó bạn!',
             status: 'not_explored',
@@ -914,7 +914,7 @@ export function createInitialSeedData(): BuddyAppData {
             choices: [
               'Thử phát biểu hoặc hỏi cô giáo, dù chưa đúng mình cũng học thêm được điều mới',
               'Hít một hơi thật sâu và bắt đầu từ bước nhỏ nhất',
-              'Nhớ rằng thầy cô và ba mẹ luôn ủng hộ khi con dám cố gắng',
+              'Nhớ rằng thầy cô và ba mẹ luôn ủng hộ khi mình dám cố gắng',
             ],
             buddyWarmFeedback:
               'Suy nghĩ tích cực ấy chính là chiếc chìa khóa mở ra lòng dũng cảm của bạn!',
@@ -940,9 +940,9 @@ export function createInitialSeedData(): BuddyAppData {
             promptOrStory:
               'Bạn đã thử làm điều gì mới hôm nay? Lúc làm xong bạn cảm thấy thế nào?',
             choices: [
-              'Lúc đầu hơi hồi hộp nhưng làm xong con thấy vui lắm',
-              'Con thấy việc đó không đáng sợ như mình tưởng',
-              'Lần sau con sẽ tiếp tục tự tin thử sức',
+              'Lúc đầu hơi hồi hộp nhưng làm xong mình thấy vui lắm',
+              'Mình thấy việc đó không đáng sợ như mình tưởng',
+              'Lần sau mình sẽ tiếp tục tự tin thử sức',
             ],
             buddyWarmFeedback:
               'Mình vỗ tay khen tinh thần dũng cảm của bạn nhé!',
@@ -971,7 +971,7 @@ export function createInitialSeedData(): BuddyAppData {
             typeLabel: 'Khám phá',
             title: 'Hộp bút màu vẽ chung hai bức tranh',
             promptOrStory:
-              'Trong giờ vẽ tranh, bạn ngồi cạnh quên mang hộp màu sáp nên ngồi buồn thiu nhìn tờ giấy trắng. Trong khi đó con có một hộp 12 màu rực rỡ.',
+              'Trong giờ vẽ tranh, bạn ngồi cạnh quên mang hộp màu sáp nên ngồi buồn thiu nhìn tờ giấy trắng. Trong khi đó bạn có một hộp 12 màu rực rỡ.',
             buddyWarmFeedback:
               'Khi mình chia sẻ món đồ nhỏ với bạn, niềm vui trong lớp học sẽ nhân đôi ngay lập tức!',
             status: 'not_explored',
@@ -986,7 +986,7 @@ export function createInitialSeedData(): BuddyAppData {
             choices: [
               'Cả hai bạn đều có bức tranh đẹp và có thêm một người bạn thân',
               'Giờ học vẽ trở nên rộn ràng tiếng cười hơn',
-              'Bạn nhỏ được giúp đỡ sẽ rất cảm kích và quý mến con',
+              'Bạn nhỏ được giúp đỡ sẽ rất cảm kích và quý mến mình',
             ],
             buddyWarmFeedback:
               'Chính xác! Niềm vui khi được sẻ chia luôn lớn hơn rất nhiều.',
@@ -998,7 +998,7 @@ export function createInitialSeedData(): BuddyAppData {
             typeLabel: 'Thực hành',
             title: 'Chia sẻ món ngon hoặc đồ chơi',
             promptOrStory:
-              'Hôm nay con hãy mời ông bà, ba mẹ hoặc anh chị em phần bánh/trái cây con thích, hoặc cùng chơi chung một món đồ chơi với bạn nhé.',
+              'Hôm nay bạn hãy mời ông bà, ba mẹ hoặc anh chị em phần bánh/trái cây bạn thích, hoặc cùng chơi chung một món đồ chơi với bạn nhé.',
             actionSuggestion: 'Chia sẻ đồ ăn ngon, sách truyện hoặc đồ chơi cùng người thân/bạn bè',
             buddyWarmFeedback:
               'Hành động sẻ chia của bạn làm ngôi nhà mình ấm áp hơn biết bao!',
@@ -1013,8 +1013,8 @@ export function createInitialSeedData(): BuddyAppData {
               'Hôm nay bạn đã chia sẻ điều gì và người nhận đã phản ứng thế nào?',
             choices: [
               'Mọi người cùng thưởng thức và trò chuyện rất vui',
-              'Bạn chơi cùng con rất hào hứng',
-              'Con nhận ra cho đi cũng vui như khi nhận quà',
+              'Bạn chơi cùng mình rất hào hứng',
+              'Mình nhận ra cho đi cũng vui như khi nhận quà',
             ],
             buddyWarmFeedback:
               'Trái tim biết sẻ chia của bạn thật ấm áp!',
@@ -1043,7 +1043,7 @@ export function createInitialSeedData(): BuddyAppData {
             typeLabel: 'Khám phá',
             title: 'Chiếc cặp sách đã sẵn sàng từ tối hôm trước',
             promptOrStory:
-              'Tối Chủ Nhật, dù đang thích xem nốt cuốn truyện tranh, bé Khoa vẫn nhớ lời hứa tự soạn cặp sách và kiểm tra hộp bút trước 8 giờ tối.',
+              'Tối Chủ Nhật, dù đang thích xem nốt cuốn truyện tranh, bạn Khoa vẫn nhớ lời hứa tự soạn cặp sách và kiểm tra hộp bút trước 8 giờ tối.',
             buddyWarmFeedback:
               'Nhớ và làm trọn vẹn việc của mình chính là biểu hiện rõ nhất của tinh thần trách nhiệm!',
             status: 'not_explored',
@@ -1056,9 +1056,9 @@ export function createInitialSeedData(): BuddyAppData {
             promptOrStory:
               'Khi bạn tự giác hoàn thành góc học tập và cặp sách của mình, buổi sáng hôm sau sẽ thay đổi thế nào?',
             choices: [
-              'Sáng mai con thảnh thơi, không lo quên sách vở ở nhà',
+              'Sáng mai mình thảnh thơi, không lo quên sách vở ở nhà',
               'Ba mẹ yên tâm hơn và không phải nhắc nhở nhiều lần',
-              'Con cảm thấy tự hào vì làm chủ được đồ dùng của mình',
+              'Mình cảm thấy tự hào vì làm chủ được đồ dùng của mình',
             ],
             buddyWarmFeedback:
               'Tuyệt vời! Tinh thần trách nhiệm giúp cả bạn và ba mẹ có mỗi ngày thật nhẹ nhàng.',
@@ -1080,13 +1080,13 @@ export function createInitialSeedData(): BuddyAppData {
             id: 'exp-resp-4',
             type: 'share',
             typeLabel: 'Chia sẻ',
-            title: 'Kể cho Buddy nghe cảm giác tự làm chủ công việc',
+            title: 'Kể cho mình nghe cảm giác tự làm chủ công việc',
             promptOrStory:
               'Khi tự nhớ và làm xong việc của mình trước khi ba mẹ nhắc, bạn cảm thấy thế nào?',
             choices: [
-              'Ba mẹ rất bất ngờ và khen con trưởng thành',
-              'Con thấy mình chững chạc và tự tin hơn',
-              'Đồ dùng của con lúc nào cũng dễ tìm',
+              'Ba mẹ rất bất ngờ và khen mình trưởng thành',
+              'Mình thấy chững chạc và tự tin hơn',
+              'Đồ dùng của mình lúc nào cũng dễ tìm',
             ],
             buddyWarmFeedback:
               'Mình rất ấn tượng với sự tự giác của bạn!',
@@ -1115,7 +1115,7 @@ export function createInitialSeedData(): BuddyAppData {
             typeLabel: 'Khám phá',
             title: 'Bộ xếp hình nhiều mảnh ghép khó',
             promptOrStory:
-              'Lần đầu lắp mô hình ngôi nhà gỗ, lắp tới mái nhà thì các mảnh ghép bị trượt ra. Thay vì bỏ cuộc, bé Bình hít thở sâu và lắp lại từ phần khung thật chắc.',
+              'Lần đầu lắp mô hình ngôi nhà gỗ, lắp tới mái nhà thì các mảnh ghép bị trượt ra. Thay vì bỏ cuộc, bạn Bình hít thở sâu và lắp lại từ phần khung thật chắc.',
             buddyWarmFeedback:
               'Giống như chú Kiến Nhỏ tha hạt gạo, kiên trì thử lại từng bước luôn dẫn bạn tới thành quả đáng tự hào!',
             status: 'not_explored',
@@ -1156,9 +1156,9 @@ export function createInitialSeedData(): BuddyAppData {
             promptOrStory:
               'Khi kiên nhẫn làm xong việc mà lúc đầu bạn tưởng là khó, bạn cảm thấy ra sao?',
             choices: [
-              'Con thấy rất vui vì mình đã không bỏ cuộc',
+              'Mình thấy rất vui vì đã không bỏ cuộc',
               'Hóa ra làm từng bước nhỏ thì việc khó cũng thành dễ',
-              'Con muốn khoe thành quả ngay với ba mẹ và Buddy',
+              'Mình muốn khoe thành quả ngay với ba mẹ và Buddy',
             ],
             buddyWarmFeedback:
               'Chúc mừng bạn đã chinh phục thêm một đỉnh đồi kiên trì!',
@@ -1187,7 +1187,7 @@ export function createInitialSeedData(): BuddyAppData {
             typeLabel: 'Khám phá',
             title: 'Nhặt giúp bạn chồng vở bị rơi ở hành lang',
             promptOrStory:
-              'Giờ ra chơi, một bạn lớp bên cạnh đi vội làm rơi chồng vở xuống sàn. Bé Thảo đang đi ngang qua liền dừng lại cúi xuống nhặt giúp và trao tận tay bạn.',
+              'Giờ ra chơi, một bạn lớp bên cạnh đi vội làm rơi chồng vở xuống sàn. Bạn Thảo đang đi ngang qua liền dừng lại cúi xuống nhặt giúp và trao tận tay bạn.',
             buddyWarmFeedback:
               'Một hành động tử tế tuy chỉ mất vài giây nhưng có thể làm bừng sáng cả một ngày của người khác!',
             status: 'not_explored',
@@ -1228,9 +1228,9 @@ export function createInitialSeedData(): BuddyAppData {
             promptOrStory:
               'Bạn hãy kể lại việc tử tế nhỏ bạn đã làm hoặc nhận được từ người khác nhé!',
             choices: [
-              'Con đã giúp đỡ người khác và nhận lại nụ cười thật tươi',
-              'Hôm nay cũng có người đối xử rất tốt và dịu dàng với con',
-              'Con thích cảm giác mọi người yêu thương nhau',
+              'Mình đã giúp đỡ người khác và nhận lại nụ cười thật tươi',
+              'Hôm nay cũng có người đối xử rất tốt và dịu dàng với mình',
+              'Mình thích cảm giác mọi người yêu thương nhau',
             ],
             buddyWarmFeedback:
               'Mình cảm nhận được sự ấm áp từ câu chuyện của bạn!',
@@ -1272,9 +1272,9 @@ export function createInitialSeedData(): BuddyAppData {
             promptOrStory:
               'Khi bạn tự làm được những việc vừa sức như soạn đồ, rửa tay, dọn bàn học, bạn thấy điều gì thú vị nhất?',
             choices: [
-              'Con thấy mình khéo léo và làm chủ được thời gian của mình',
-              'Con có thể tự chọn và sắp xếp góc riêng thật gọn đẹp',
-              'Ba mẹ rất yên tâm và tin tưởng giao việc cho con',
+              'Mình thấy khéo léo và làm chủ được thời gian của mình',
+              'Mình có thể tự chọn và sắp xếp góc riêng thật gọn đẹp',
+              'Ba mẹ rất yên tâm và tin tưởng giao việc cho mình',
             ],
             buddyWarmFeedback:
               'Đúng vậy! Tự lập giúp bạn ngày càng vững vàng và khéo léo hơn.',
@@ -1300,9 +1300,9 @@ export function createInitialSeedData(): BuddyAppData {
             promptOrStory:
               'Việc nào trước đây bạn cần ba mẹ giúp nhưng bây giờ bạn đã tự làm được một mình rồi?',
             choices: [
-              'Con đã tự chuẩn bị cặp sách theo thời khóa biểu mỗi tối',
-              'Con tự vệ sinh cá nhân và mặc quần áo đi học buổi sáng',
-              'Con tự dọn gọn góc học tập và đồ chơi sau khi dùng xong',
+              'Mình đã tự chuẩn bị cặp sách theo thời khóa biểu mỗi tối',
+              'Mình tự vệ sinh cá nhân và mặc quần áo đi học buổi sáng',
+              'Mình tự dọn gọn góc học tập và đồ chơi sau khi dùng xong',
             ],
             buddyWarmFeedback:
               'Bạn đã tiến một bước thật dài trên bản đồ Hành trình! Mình luôn vui được đồng hành cùng bạn.',

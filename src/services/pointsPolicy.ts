@@ -46,7 +46,7 @@ export function canAwardStars(
   if (duplicate) {
     return {
       allowed: false,
-      reason: 'Hôm nay con đã nhận ngôi sao cho hoạt động này rồi! Buddy vẫn rất tự hào vì con chăm chỉ làm lại nhé!',
+      reason: 'Hôm nay bạn đã nhận ngôi sao cho hoạt động này rồi! Mình vẫn rất vui vì bạn kiên trì làm lại nhé!',
     };
   }
   return { allowed: true };

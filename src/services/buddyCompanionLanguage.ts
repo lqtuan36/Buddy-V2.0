@@ -195,12 +195,13 @@ export function normalizeBuddyCompanionText(
     return `__BUDDY_KEEP_${idx}__`;
   };
 
-  // Protect UI section names when referenced literally (case-sensitive for standalone "Của con")
-  text = text.replace(
-    vnRegex('Hành trình của con|Thế giới của con|mục Của con|tab Của con', 'giu'),
-    stashToken
-  );
-  text = text.replace(vnRegex('Của con', 'gu'), stashToken);
+  // Convert legacy child UI section references to v2.1 "của mình"
+  text = text
+    .replace(vnRegex('Hành trình của con', 'giu'), 'Hành trình của mình')
+    .replace(vnRegex('Việc tiếp theo của con', 'giu'), 'Việc tiếp theo của mình')
+    .replace(vnRegex('Ngôi sao của con', 'giu'), 'Ngôi sao của mình')
+    .replace(vnRegex('Vòng quay Quà của con', 'giu'), 'Vòng quay Quà của mình')
+    .replace(vnRegex('Của con', 'gu'), 'Của mình');
 
   // Protect "con [follower]" (e.g., "con mèo", "con đường", "con dốc", "con suối", "con số")
   const nounFollowerRegex = vnRegex(`con\\s+(?:${FOLLOWER_REGEX_PART})`, 'giu');
@@ -283,5 +284,12 @@ export function toBuddyCompanionVoiceText(
   if (context === 'story') {
     return rawText;
   }
+  return normalizeBuddyCompanionText(rawText, childName);
+}
+
+export function toBuddyCompanionUiText(
+  rawText: string,
+  childName?: string
+): string {
   return normalizeBuddyCompanionText(rawText, childName);
 }

@@ -600,7 +600,7 @@ export const TaskStepCard: React.FC<TaskStepCardProps> = ({
               className="min-h-[46px] px-2.5 sm:px-3.5 py-2 rounded-[18px] bg-[#FFF0C9] hover:bg-[#ffe5a3] disabled:opacity-45 text-[#23324D] font-kids font-extrabold text-xs sm:text-sm inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
             >
               <HelpCircle className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-              <span>Chưa hiểu</span>
+              <span>Mình chưa hiểu</span>
             </button>
 
             <button

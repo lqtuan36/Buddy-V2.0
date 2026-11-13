@@ -134,11 +134,25 @@ export class LocalDemoRepository implements IDataRepository {
         tasks:
           Array.isArray(parsed.tasks) && parsed.tasks.length > 0
             ? parsed.tasks.map((t) => {
-                // Ensure task-backpack is upgraded to the 5 distinct Warm Storybook steps in v1.3
+                // Ensure task-backpack is upgraded to the 5 distinct Warm Storybook steps in v1.3+
                 if (t.id === 'task-backpack' && t.steps.length < 5) {
                   return seed.tasks.find((st) => st.id === 'task-backpack') || t;
                 }
-                return t;
+                return {
+                  ...t,
+                  steps: Array.isArray(t.steps)
+                    ? t.steps.map((s) => {
+                        const stripped = (s.actionTitle || '').replace(/^Bé\s+/i, '');
+                        const cleanTitle = stripped
+                          ? stripped.charAt(0).toUpperCase() + stripped.slice(1)
+                          : s.actionTitle;
+                        return {
+                          ...s,
+                          actionTitle: cleanTitle,
+                        };
+                      })
+                    : [],
+                };
               })
             : seed.tasks,
         routines:
@@ -147,19 +161,27 @@ export class LocalDemoRepository implements IDataRepository {
             : seed.routines,
         stories:
           Array.isArray(parsed.stories) && parsed.stories.length > 0
-            ? parsed.stories.map((st, idx) => ({
-                ...st,
-                contentVersion: st.contentVersion ?? 1,
-                orderIndex: st.orderIndex ?? idx,
-                approvalStatus:
-                  st.approvalStatus ?? (st.approvedByParent ? 'approved' : 'draft'),
-                audioStatus:
-                  st.audioStatus === 'generating' || st.audioStatus === 'failed'
+            ? parsed.stories.map((st, idx) => {
+                const hasOfficialV21VoiceAsset =
+                  typeof st.audioAssetId === 'string' &&
+                  (st.audioAssetId.includes('_Puck_') || st.audioAssetId.includes('_Zephyr_'));
+                return {
+                  ...st,
+                  contentVersion: st.contentVersion ?? 1,
+                  orderIndex: st.orderIndex ?? idx,
+                  approvalStatus:
+                    st.approvalStatus ?? (st.approvedByParent ? 'approved' : 'draft'),
+                  audioAssetId: hasOfficialV21VoiceAsset ? st.audioAssetId : undefined,
+                  audioUrl: hasOfficialV21VoiceAsset ? st.audioUrl : undefined,
+                  audioStatus: !hasOfficialV21VoiceAsset
+                    ? 'none'
+                    : st.audioStatus === 'generating' || st.audioStatus === 'failed'
                     ? st.audioUrl
                       ? 'ready'
                       : 'none'
                     : st.audioStatus ?? (st.audioUrl ? 'ready' : 'none'),
-              }))
+                };
+              })
             : seed.stories.map((st, idx) => ({
                 ...st,
                 contentVersion: st.contentVersion ?? 1,
@@ -190,9 +212,12 @@ export class LocalDemoRepository implements IDataRepository {
                   { x: 48, y: 19 },
                 ];
                 const fallbackCoord = defaultCoords[idx % defaultCoords.length];
+                const isUnmodifiedSeedTopic =
+                  Boolean(seedMatch) && (savedTopic.version ?? 1) <= 1;
                 return {
                   ...(seedMatch || {}),
                   ...savedTopic,
+                  subtitle: isUnmodifiedSeedTopic && seedMatch ? seedMatch.subtitle : savedTopic.subtitle,
                   xPercent:
                     savedTopic.xPercent ??
                     seedMatch?.xPercent ??
@@ -205,6 +230,16 @@ export class LocalDemoRepository implements IDataRepository {
                   experiences: Array.isArray(savedTopic.experiences)
                     ? savedTopic.experiences.map((savedExp, eIdx) => {
                         const seedExp = seedMatch?.experiences?.[eIdx];
+                        if (isUnmodifiedSeedTopic && seedExp) {
+                          return {
+                            ...savedExp,
+                            title: seedExp.title,
+                            promptOrStory: seedExp.promptOrStory,
+                            choices: seedExp.choices,
+                            actionSuggestion: seedExp.actionSuggestion ?? savedExp.actionSuggestion,
+                            buddyWarmFeedback: seedExp.buddyWarmFeedback,
+                          };
+                        }
                         return {
                           ...(seedExp || {}),
                           ...savedExp,

@@ -109,7 +109,7 @@ export const KidsHomeView: React.FC = () => {
             type="button"
             onClick={() => openSubView({ type: 'stars-detail' })}
             className="min-h-[44px] px-4 py-2 rounded-[18px] bg-[#FFF0C9] hover:bg-[#ffe5a3] text-[#23324D] font-kids font-extrabold text-sm inline-flex items-center gap-1.5 shadow-[0_4px_12px_rgba(245,158,11,0.12)] transition-transform active:scale-95 cursor-pointer"
-            title="Ngôi sao của con"
+            title="Ngôi sao của mình"
           >
             <Star className="w-4 h-4 text-amber-500 fill-amber-400" />
             <span className="tabular-nums">{starSummary.monthlyStars}</span>
@@ -179,7 +179,7 @@ export const KidsHomeView: React.FC = () => {
       </section>
 
       {/* 3. FEATURED NEXT ACTIVITY ("VIỆC TIẾP THEO") + SCHOOL PREP REMINDER */}
-      <section aria-label="Việc tiếp theo của con" className="space-y-4">
+      <section aria-label="Việc tiếp theo của mình" className="space-y-4">
         {schoolPrepReminder && !schoolPrepReminder.isDismissed && (
           <div className="rounded-[28px] bg-gradient-to-br from-[#FFF0C9] via-[#FFF9EB] to-[#EAF3FF] border border-amber-300/80 p-4 sm:p-5 shadow-[0_10px_26px_rgba(245,158,11,0.1)] space-y-3">
             <div className="flex items-start justify-between gap-2">
@@ -236,7 +236,7 @@ export const KidsHomeView: React.FC = () => {
             <div className="flex items-center justify-between gap-2">
               <span className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-kids font-extrabold text-[#3978F6]">
                 <Sparkles className="w-4 h-4 text-amber-500 fill-amber-400" />
-                <span>Việc tiếp theo của con</span>
+                <span>Việc tiếp theo của mình</span>
               </span>
               <span className="px-3 py-1 rounded-[14px] bg-[#FFF0C9] text-amber-900 font-kids font-extrabold text-xs tabular-nums">
                 +{featuredTask.starReward} ★ · {featuredTask.steps.length} bước tranh
@@ -306,7 +306,7 @@ export const KidsHomeView: React.FC = () => {
               <div className="min-w-0 flex-1">
                 <span className="inline-flex items-center gap-1 text-xs font-kids font-extrabold text-[#6B3FA0]">
                   <Compass className="w-3.5 h-3.5" />
-                  <span>Hành trình của con · Chặng {currentJourneyTopic.stageOrder}</span>
+                  <span>Hành trình của mình · Chặng {currentJourneyTopic.stageOrder}</span>
                 </span>
                 <h2 className="font-kids text-lg font-extrabold text-[#23324D] mt-0.5 leading-snug">
                   {currentJourneyTopic.title}
@@ -384,7 +384,7 @@ export const KidsHomeView: React.FC = () => {
           <div className="flex items-center justify-between gap-2">
             <div>
               <span className="text-xs font-kids font-extrabold text-emerald-900">
-                Tiến độ hôm nay của {data.profile.displayName}
+                Tiến độ hôm nay của mình ({data.profile.displayName})
               </span>
               <h2 className="font-kids text-lg sm:text-xl font-extrabold text-[#23324D] mt-0.5">
                 Đã hoàn thành {completedRoutinesToday}/{approvedRoutines.length} việc tốt
@@ -437,7 +437,7 @@ export const KidsHomeView: React.FC = () => {
               </div>
               <div className="min-w-0">
                 <p className="font-kids font-extrabold text-xs sm:text-sm text-[#23324D] truncate">
-                  Quà tặng của con
+                  Quà tặng của mình
                 </p>
                 <p className="text-[11px] font-semibold text-[#5C6F8C] truncate">
                   {starSummary.wheelEligible

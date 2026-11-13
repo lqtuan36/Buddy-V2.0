@@ -175,17 +175,16 @@ export const ChildProfileOverviewView: React.FC = () => {
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white text-[#3978F6] font-kids font-extrabold text-xs shadow-2xs">
             <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
             <span>
-              Thế giới nhỏ của {data.profile.displayName} ({data.profile.ageYears} tuổi · Minh họa{' '}
-              {data.profile.characterVariant === 'boy' ? 'Bé trai' : 'Bé gái'})
+              Góc nhỏ của mình · {data.profile.displayName} ({data.profile.ageYears} tuổi)
             </span>
           </div>
 
           <h1 className="font-kids text-xl sm:text-2xl font-extrabold text-[#23324D] pt-0.5">
-            Chào {data.profile.displayName} đáng yêu! 🌟
+            Chào người bạn tuyệt vời {data.profile.displayName}! 🌟
           </h1>
 
           <p className="text-xs sm:text-sm text-[#23324D]/75 max-w-xs mx-auto leading-relaxed">
-            Nơi lưu giữ ngôi sao nỗ lực, hành trình phẩm chất và quà tặng gia đình của con.
+            Nơi lưu giữ ngôi sao nỗ lực, hành trình phẩm chất và quà tặng gia đình của mình.
           </p>
         </div>
 
@@ -206,7 +205,7 @@ export const ChildProfileOverviewView: React.FC = () => {
               {completedActivitiesTotal} việc tốt
             </p>
             <span className="block text-[10px] font-bold text-[#5C6F8C]">
-              Chăm ngoan
+              Nỗ lực
             </span>
           </div>
           <div className="rounded-[18px] bg-white/95 border border-[#3978F6]/12 p-2.5 text-center shadow-2xs">
@@ -281,7 +280,7 @@ export const ChildProfileOverviewView: React.FC = () => {
                 Bảng theo dõi tháng {data.profile.currentCycleMonth}
               </span>
               <h2 className="font-kids text-base sm:text-lg font-extrabold text-[#23324D] leading-snug">
-                Chuỗi 7 ngày thói quen tốt của con
+                Chuỗi 7 ngày thói quen tốt của mình
               </h2>
             </div>
           </div>
@@ -337,7 +336,7 @@ export const ChildProfileOverviewView: React.FC = () => {
               {experiencedJourneyCount} dấu ấn phẩm chất
             </span>
             <h2 className="font-kids text-lg font-extrabold text-[#23324D] mt-1">
-              Chặng phẩm chất gần đây của con
+              Hành trình của mình gần đây
             </h2>
           </div>
           <button
@@ -406,8 +405,8 @@ export const ChildProfileOverviewView: React.FC = () => {
           <div className="absolute bottom-3 left-3.5 right-3.5 text-white">
             <h2 className="font-kids text-base sm:text-lg font-extrabold leading-snug drop-shadow-xs">
               {starSummary.wheelEligible
-                ? 'Chúc mừng con đã mở khóa Vòng quay Quà tặng!'
-                : `Còn ${starSummary.starsRemainingForWheel} ngôi sao nữa để mở Vòng quay kỳ diệu`}
+                ? 'Chúc mừng bạn đã mở khóa Vòng quay Quà tặng!'
+                : `Bạn chỉ còn ${starSummary.starsRemainingForWheel} ngôi sao nữa thôi để mở Vòng quay kỳ diệu`}
             </h2>
           </div>
         </div>
@@ -424,7 +423,7 @@ export const ChildProfileOverviewView: React.FC = () => {
           onClick={() => openSubView({ type: 'rewards-wheel' })}
           className="w-full min-h-[46px] px-4 py-2.5 rounded-[18px] bg-[#3978F6] hover:bg-[#2964DF] text-white font-kids font-extrabold text-sm inline-flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
         >
-          <span>Mở Vòng quay Quà của con</span>
+          <span>Mở Vòng quay Quà của mình</span>
           <ChevronRight className="w-4 h-4" />
         </button>
       </section>
@@ -437,7 +436,7 @@ export const ChildProfileOverviewView: React.FC = () => {
               Giọng nói tiếng Việt của Buddy
             </span>
             <h2 className="font-kids text-lg font-extrabold text-[#23324D]">
-              Chọn giọng đọc con yêu thích
+              Chọn giọng đọc bạn yêu thích
             </h2>
           </div>
 
@@ -583,7 +582,7 @@ export const MyBuddySettingsView: React.FC<{ onBack?: () => void }> = ({
             className="inline-flex items-center gap-1.5 min-h-[40px] px-3.5 py-1.5 rounded-[16px] bg-white hover:bg-[#EAF3FF] border border-[#23324D]/8 text-xs sm:text-sm font-kids font-bold text-[#23324D] transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Quay lại Thế giới của con</span>
+            <span>Quay lại mục Của mình</span>
           </button>
         </div>
       )}
@@ -603,7 +602,7 @@ export const MyBuddySettingsView: React.FC<{ onBack?: () => void }> = ({
             Giọng nói của Buddy
           </h1>
           <p className="text-xs sm:text-sm text-[#23324D]/75 mt-1 max-w-sm mx-auto leading-relaxed">
-            Chọn giọng đọc <strong>Nam ấm áp</strong> hoặc <strong>Nữ dịu dàng</strong> cho bạn robot Buddy của {data.profile.displayName}.
+            Chọn giọng đọc <strong>Nam ấm áp (Puck)</strong> hoặc <strong>Nữ trong trẻo (Zephyr)</strong> cho bạn Buddy của {data.profile.displayName}.
           </p>
         </div>
       </section>
@@ -638,7 +637,7 @@ export const MyBuddySettingsView: React.FC<{ onBack?: () => void }> = ({
                     Giọng Nữ dịu dàng
                   </h3>
                   <p className="text-xs text-[#23324D]/75">
-                    Trong trẻo, nhẹ nhàng khi kể chuyện
+                    Trong trẻo, sáng rõ và thân thiện
                   </p>
                 </div>
               </div>
@@ -650,7 +649,7 @@ export const MyBuddySettingsView: React.FC<{ onBack?: () => void }> = ({
             <div className="pt-2.5 border-t border-[#23324D]/8 flex items-center justify-between text-xs text-[#23324D]/70">
               <span>
                 {voiceCapabilities.geminiTtsAvailable
-                  ? 'Gemini Kore (Chuẩn AI)'
+                  ? 'Gemini Zephyr (Chuẩn AI)'
                   : 'Giọng Nữ trình duyệt'}
               </span>
               <span className="font-bold text-[#3978F6]">
@@ -3236,7 +3235,7 @@ export const ParentDashboardView: React.FC<{ onBack: () => void }> = ({ onBack }
 
                         <div>
                           <label className="block text-[11px] font-semibold text-[#23324D]/70 mb-1">
-                            Lời giải thích khi bé bấm "Con chưa hiểu"
+                            Lời giải thích khi bé bấm "Mình chưa hiểu"
                           </label>
                           <input
                             type="text"

@@ -719,15 +719,27 @@ class UnifiedVoiceService {
               return;
             }
             hasStartedPlaying = true;
+            const usedFallback = Boolean(payload?.isFallback);
+            if (usedFallback) {
+              this.capabilities.geminiTtsAvailable = false;
+              this.updateCapabilityNote();
+            } else if (!this.capabilities.geminiTtsAvailable) {
+              this.capabilities.geminiTtsAvailable = true;
+              this.updateCapabilityNote();
+            }
+            const officialVoiceLabel =
+              preference.gender === 'male' ? 'Nam Gemini Puck' : 'Nữ Gemini Zephyr';
             this.state = {
               status: 'playing',
-              activeEngine: 'gemini-server-tts',
+              activeEngine: usedFallback ? 'browser-speech-synthesis' : 'gemini-server-tts',
               activeGender: preference.gender,
               lastSpokenText: this.state.lastSpokenText,
               currentUtteranceId: utteranceId,
-              statusMessage: `Buddy đang nói (Giọng ${
-                preference.gender === 'male' ? 'Nam' : 'Nữ'
-              } AI tiếng Việt)...`,
+              statusMessage: usedFallback
+                ? `Buddy đang đọc (Giọng ${
+                    preference.gender === 'male' ? 'Nam' : 'Nữ'
+                  } tiếng Việt vi-VN dự phòng)...`
+                : `Buddy đang nói (Giọng ${officialVoiceLabel})...`,
               autoplayBlocked: false,
             };
             this.notify();

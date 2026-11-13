@@ -254,10 +254,12 @@ class PodcastPlaybackController {
     try {
       // Section A.3: If story already has a cached audioAssetId & audioUrl for the selected voiceGender,
       // verify that the file still exists on disk after server restart before trusting localStorage!
+      const expectedVoiceName = preference.gender === 'male' ? 'Puck' : 'Zephyr';
       if (
         !options?.forceRegenerate &&
         story.audioStatus === 'ready' &&
         story.audioAssetId &&
+        story.audioAssetId.includes(expectedVoiceName) &&
         story.audioUrl &&
         (!story.voiceGender || story.voiceGender === preference.gender)
       ) {

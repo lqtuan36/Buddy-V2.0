@@ -321,40 +321,40 @@ function parseVietnameseCurriculumTextToDraftTopics(rawText: string) {
           title: `Câu chuyện nhỏ về ${cleanTitle}`,
           promptOrStory:
             bodyText.slice(0, 260) ||
-            `Trong sinh hoạt hằng ngày, mỗi việc làm nhỏ thể hiện ${cleanTitle.toLowerCase()} đều mang lại niềm vui cho con và mọi người xung quanh.`,
-          buddyWarmFeedback: `Con đã lắng nghe và khám phá ý nghĩa của ${cleanTitle.toLowerCase()} thật chăm chú!`,
+            `Trong sinh hoạt hằng ngày, mỗi việc làm nhỏ thể hiện ${cleanTitle.toLowerCase()} đều mang lại niềm vui cho bạn và mọi người xung quanh.`,
+          buddyWarmFeedback: `Bạn đã lắng nghe và khám phá ý nghĩa của ${cleanTitle.toLowerCase()} thật chăm chú!`,
         },
         {
           type: 'understand',
           typeLabel: 'Hiểu',
-          title: `Khi nào con thể hiện ${cleanTitle.toLowerCase()}?`,
-          promptOrStory: `Theo con, hành động nào dưới đây thể hiện rõ nhất ${cleanTitle.toLowerCase()} trong gia đình và lớp học?`,
+          title: `Khi nào mình thể hiện ${cleanTitle.toLowerCase()}?`,
+          promptOrStory: `Bạn sẽ chọn cách nào dưới đây để thể hiện rõ nhất ${cleanTitle.toLowerCase()} trong gia đình và lớp học?`,
           choices: [
             `Chủ động nói lời ấm áp và cư xử chân thành với ông bà, ba mẹ và bạn bè`,
             `Tự giác làm phần việc vừa sức của mình một cách vui vẻ`,
             `Lắng nghe, sẻ chia và sẵn sàng giúp đỡ người xung quanh`,
           ],
-          buddyWarmFeedback: `Tuyệt vời! Con đã hiểu rất rõ cách thể hiện ${cleanTitle.toLowerCase()} rồi đấy!`,
+          buddyWarmFeedback: `Tuyệt vời! Bạn đã hiểu rất rõ cách thể hiện ${cleanTitle.toLowerCase()} rồi đấy!`,
         },
         {
           type: 'practice',
           typeLabel: 'Thực hành',
           title: `Thử thách thực tế: ${cleanTitle}`,
-          promptOrStory: `Hôm nay con hãy thực hiện 1 hành động nhỏ ngoài đời thực để rèn luyện ${cleanTitle.toLowerCase()} cùng gia đình nhé!`,
+          promptOrStory: `Hôm nay bạn hãy thực hiện 1 hành động nhỏ ngoài đời thực để rèn luyện ${cleanTitle.toLowerCase()} cùng gia đình nhé!`,
           actionSuggestion: `Thực hiện một việc làm nhỏ thể hiện ${cleanTitle.toLowerCase()} với người thân trong hôm nay`,
-          buddyWarmFeedback: `Hoan hô con đã biến ${cleanTitle.toLowerCase()} thành hành động ấm áp ngoài đời thực!`,
+          buddyWarmFeedback: `Hoan hô bạn đã biến ${cleanTitle.toLowerCase()} thành hành động ấm áp ngoài đời thực!`,
         },
         {
           type: 'share',
           typeLabel: 'Chia sẻ',
-          title: `Tâm sự cùng Buddy & Ba Mẹ`,
-          promptOrStory: `Sau khi thực hiện việc tốt về ${cleanTitle.toLowerCase()}, trong lòng con cảm thấy thế nào?`,
+          title: `Chia sẻ cùng mình`,
+          promptOrStory: `Sau khi thực hiện việc tốt về ${cleanTitle.toLowerCase()}, hôm nay bạn cảm thấy thế nào?`,
           choices: [
-            'Trong lòng con thấy vui và ấm áp lắm',
-            'Ba mẹ mỉm cười và khen con trưởng thành hơn',
-            'Con muốn tiếp tục duy trì thói quen tốt này mỗi ngày',
+            'Trong lòng mình thấy vui và ấm áp lắm',
+            'Ba mẹ mỉm cười và khen mình trưởng thành hơn',
+            'Mình muốn tiếp tục duy trì thói quen tốt này mỗi ngày',
           ],
-          buddyWarmFeedback: `Cảm ơn con đã chia sẻ cảm xúc thật đẹp cùng Buddy!`,
+          buddyWarmFeedback: `Cảm ơn bạn đã chia sẻ cảm xúc thật đẹp cùng mình!`,
         },
       ],
     };
@@ -524,32 +524,32 @@ Nguyên tắc bắt buộc:
 
       const ai = getGeminiClient();
 
-      // Consistent voice mapping: female -> Kore, male -> Puck
-      const voiceName = gender === 'male' ? 'Puck' : 'Kore';
+      // Official Gemini TTS voice mapping (v2.1): female -> Zephyr, male -> Puck
+      const voiceName = gender === 'male' ? 'Puck' : 'Zephyr';
 
       const moodInfo = detectParagraphNarrativeMood(cleanText, 0, 1);
       let styleInstruction =
         gender === 'male'
-          ? 'Giọng nam tiếng Việt chuẩn (vi-VN), tươi vui, sáng rõ, ấm áp, phát âm tròn vành rõ từng chữ, nhịp điệu tự nhiên có nhấn nhá nhẹ nhàng, không quá nhanh, không chói gắt, như một người bạn đồng hành thân thiện của trẻ em 6–8 tuổi.'
-          : 'Giọng nữ tiếng Việt chuẩn (vi-VN), tươi vui, trong trẻo, dịu dàng, phát âm tròn vành rõ từng chữ, nhịp điệu tự nhiên có nhấn nhá nhẹ nhàng, không quá nhanh, không chói gắt, như một người bạn đồng hành thân thiện của trẻ em 6–8 tuổi.';
+          ? 'Giọng nam tiếng Việt chuẩn (vi-VN), vui tươi, ấm áp, năng động, phát âm tròn vành rõ từng chữ, nhịp điệu tự nhiên có nhấn nhá nhẹ nhàng, không quá nhanh, như một người bạn nhỏ thân thiện đang trò chuyện cùng bạn 6–8 tuổi (xưng mình - gọi bạn, không mang giọng người lớn dạy bảo).'
+          : 'Giọng nữ tiếng Việt chuẩn (vi-VN), trong trẻo, sáng rõ, thân thiện, phát âm tròn vành rõ từng chữ, nhịp điệu tự nhiên có nhấn nhá nhẹ nhàng, không quá nhanh, như một người bạn nhỏ đáng yêu đang trò chuyện cùng bạn 6–8 tuổi (xưng mình - gọi bạn, không mang giọng người lớn dạy bảo).';
 
       if (context === 'story') {
         styleInstruction += ` ${moodInfo.stylePrompt}`;
       } else if (context === 'guide') {
         styleInstruction +=
-          ' Đọc ngắn gọn, rõ từng từ ở tốc độ vừa phải để bạn nhỏ 6–8 tuổi nghe hiểu ngay hành động cần làm, giọng khích lệ tươi tắn.';
+          ' Đọc ngắn gọn, rõ từng từ ở tốc độ vừa phải để bạn nhỏ 6–8 tuổi nghe hiểu ngay hành động cần làm, giọng khích lệ tươi tắn của người bạn đồng hành.';
       } else if (context === 'celebration') {
         styleInstruction +=
-          ' Giọng hào hứng, tươi tắn, khen ngợi nỗ lực của bạn nhỏ thật tự nhiên và ấm áp.';
+          ' Giọng hào hứng, tươi tắn, khen ngợi nỗ lực của bạn nhỏ thật tự nhiên và ấm áp như một người bạn thân.';
       }
 
-      // Disk cache for /api/tts so repeated step titles or celebration phrases never burn extra TTS quota
+      // Disk cache for /api/tts keyed by v2.1 + voiceName (Puck / Zephyr) so old Kore cache is never served
       const ttsCacheHash = crypto
         .createHash('sha1')
-        .update(`v1.4|${voiceName}|${gender}|${context}|${cleanText}`)
+        .update(`v2.1|${voiceName}|${gender}|${context}|${cleanText}`)
         .digest('hex')
         .slice(0, 20);
-      const ttsCachePath = path.join(PODCAST_CACHE_DIR, `tts_${ttsCacheHash}.wav`);
+      const ttsCachePath = path.join(PODCAST_CACHE_DIR, `tts_v21_${voiceName}_${ttsCacheHash}.wav`);
 
       if (fs.existsSync(ttsCachePath)) {
         try {
@@ -562,6 +562,9 @@ Nguyên tắc bắt buộc:
               channels: 1,
               bitsPerSample: 16,
               voiceName,
+              requestedVoiceName: voiceName,
+              engineUsed: 'gemini-tts',
+              isFallback: false,
               gender,
               mood: moodInfo.mood,
               cached: true,
@@ -572,7 +575,7 @@ Nguyên tắc bắt buộc:
         }
       }
 
-      const { pcmBuffer } = await synthesizeVietnameseTtsSegment(
+      const { pcmBuffer, engineUsed } = await synthesizeVietnameseTtsSegment(
         ai,
         cleanText,
         voiceName,
@@ -581,10 +584,13 @@ Nguyên tắc bắt buộc:
 
       const wavBuffer = buildWavBufferFromPcm(pcmBuffer, 24000, 1, 16);
 
-      try {
-        fs.writeFileSync(ttsCachePath, wavBuffer);
-      } catch {
-        // Ignore cache write error
+      // Only persist to permanent Gemini TTS disk cache if synthesized by real Gemini TTS
+      if (engineUsed === 'gemini-tts') {
+        try {
+          fs.writeFileSync(ttsCachePath, wavBuffer);
+        } catch {
+          // Ignore cache write error
+        }
       }
 
       return res.json({
@@ -593,7 +599,10 @@ Nguyên tắc bắt buộc:
         sampleRate: 24000,
         channels: 1,
         bitsPerSample: 16,
-        voiceName,
+        voiceName: engineUsed === 'gemini-tts' ? voiceName : `vi-VN-${gender}-fallback`,
+        requestedVoiceName: voiceName,
+        engineUsed,
+        isFallback: engineUsed !== 'gemini-tts',
         gender,
         mood: moodInfo.mood,
       });
@@ -649,8 +658,8 @@ Nguyên tắc bắt buộc:
       }
 
       const voiceGender = gender === 'male' ? 'male' : 'female';
-      const voiceName = voiceGender === 'male' ? 'Puck' : 'Kore';
-      const voiceVersion = 'gemini-3.8-flash-lite-tts-vi-v1.4.3';
+      const voiceName = voiceGender === 'male' ? 'Puck' : 'Zephyr';
+      const voiceVersion = `gemini-3.8-flash-lite-tts-vi-v2.1-${voiceName}`;
 
       const hashSource = JSON.stringify({
         storyId,
@@ -658,12 +667,13 @@ Nguyên tắc bắt buộc:
         paragraphs: cleanParagraphs,
         moralLesson,
         voiceGender,
+        voiceName,
         contentVersion,
         voiceVersion,
       });
       const contentHash = crypto.createHash('sha1').update(hashSource).digest('hex').slice(0, 12);
       const safeId = String(storyId).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 32);
-      const audioAssetId = `ep_${safeId}_v${contentVersion}_${voiceGender}_${contentHash}`;
+      const audioAssetId = `ep_${safeId}_v${contentVersion}_${voiceGender}_${voiceName}_${contentHash}`;
       const wavFilePath = path.join(PODCAST_CACHE_DIR, `${audioAssetId}.wav`);
       const metaFilePath = path.join(PODCAST_CACHE_DIR, `${audioAssetId}.json`);
 
@@ -968,7 +978,7 @@ Nguyên tắc bắt buộc:
         detail,
         actualDurationSeconds: estDuration,
         sceneTimeline: fallbackTimeline,
-        voiceId: gender === 'male' ? 'Puck' : 'Kore',
+        voiceId: gender === 'male' ? 'Puck' : 'Zephyr',
         voiceGender: gender === 'male' ? 'male' : 'female',
       });
     }
@@ -2352,6 +2362,7 @@ async function synthesizeVietnameseTtsSegment(
   pcmBuffer: Buffer;
   sourceSampleRate: number;
   sourceChannels: number;
+  engineUsed: 'gemini-tts' | 'server-vi-fallback';
 }> {
   let inlineData: { data?: string; mimeType?: string } | undefined;
   let lastError: unknown = null;
@@ -2434,6 +2445,7 @@ async function synthesizeVietnameseTtsSegment(
         pcmBuffer: fallbackPcm,
         sourceSampleRate: 24000,
         sourceChannels: 1,
+        engineUsed: 'server-vi-fallback',
       };
     }
     throw new Error(
@@ -2457,6 +2469,7 @@ async function synthesizeVietnameseTtsSegment(
     pcmBuffer: parsed.pcmBuffer,
     sourceSampleRate: parsed.sourceSampleRate,
     sourceChannels: parsed.sourceChannels,
+    engineUsed: 'gemini-tts',
   };
 }
 

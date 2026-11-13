@@ -199,13 +199,13 @@ export const BuddyStoryLibraryView: React.FC<{
       {/* Tonight's Parent-Scheduled Story Highlight */}
       {tonightScheduledStory && (
         <section
-          aria-label="Truyện tối nay Ba Mẹ chọn cho con"
+          aria-label="Truyện tối nay dành cho bạn"
           className="rounded-[28px] bg-gradient-to-r from-[#EDE7FF] via-[#F5F2FF] to-[#FFF0C9] border-2 border-indigo-300/70 p-4 space-y-3 shadow-2xs"
         >
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <span className="inline-flex items-center gap-1.5 text-xs font-kids font-extrabold text-indigo-800">
               <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
-              <span>Tập Podcast tối nay Ba Mẹ chọn cho con</span>
+              <span>Tập Podcast tối nay dành cho bạn</span>
             </span>
             {renderListeningBadge(tonightScheduledStory)}
           </div>
@@ -581,7 +581,7 @@ export const StoryPlayerView: React.FC<{
       badge: 'Câu hỏi 1/3 · Hiểu câu chuyện',
       question:
         story.reflectionQuestion ||
-        `Trong câu chuyện "${story.title}", điều gì làm con nhớ nhất?`,
+        `Trong câu chuyện "${story.title}", điều gì làm bạn nhớ nhất?`,
       options:
         Array.isArray(story.reflectionSuggestions) && story.reflectionSuggestions.length >= 2
           ? story.reflectionSuggestions
@@ -593,8 +593,8 @@ export const StoryPlayerView: React.FC<{
     },
     {
       stepNumber: 2,
-      badge: 'Câu hỏi 2/3 · Chi tiết con yêu thích',
-      question: 'Con thích chi tiết nào nhất trong câu chuyện vừa rồi?',
+      badge: 'Câu hỏi 2/3 · Chi tiết bạn yêu thích',
+      question: 'Bạn thích chi tiết nào nhất trong câu chuyện vừa rồi?',
       options: [
         'Lúc nhân vật chính cố gắng làm điều tốt thật đáng yêu',
         'Khung cảnh thiên nhiên và ngôi nhà ấm áp trong truyện',
@@ -603,8 +603,8 @@ export const StoryPlayerView: React.FC<{
     },
     {
       stepNumber: 3,
-      badge: 'Câu hỏi 3/3 · Việc tốt nhỏ của con',
-      question: 'Sau câu chuyện này, con muốn làm điều tốt nhỏ gì nhỉ?',
+      badge: 'Câu hỏi 3/3 · Việc tốt nhỏ của mình',
+      question: 'Sau câu chuyện này, bạn muốn làm điều tốt nhỏ gì nhỉ?',
       options: [
         'Nói lời cảm ơn và ôm ba mẹ, ông bà trước khi đi ngủ',
         'Tự giác chuẩn bị đồ dùng và giúp đỡ việc nhỏ trong nhà',

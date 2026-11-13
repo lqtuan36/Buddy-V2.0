@@ -474,7 +474,7 @@ export const BuddyActivitiesView: React.FC = () => {
             Khám phá bằng thẻ hình minh họa ấm áp
           </p>
           <h1 className="font-kids text-2xl font-extrabold text-[#23324D]">
-            Việc hôm nay của con
+            Việc hôm nay của mình
           </h1>
         </div>
 

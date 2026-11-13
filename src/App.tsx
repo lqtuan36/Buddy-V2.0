@@ -49,7 +49,7 @@ const NAV_ITEMS: Array<{
   { id: 'home', label: 'Trang chủ', icon: Home },
   { id: 'activities', label: 'Hoạt động', icon: CheckSquare },
   { id: 'journey', label: 'Hành trình', icon: Compass },
-  { id: 'profile', label: 'Của con', icon: UserRound },
+  { id: 'profile', label: 'Của mình', icon: UserRound },
 ];
 
 const BuddyShell: React.FC = () => {

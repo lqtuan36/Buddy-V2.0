@@ -63,7 +63,7 @@ export const BuddyStarsView: React.FC<{ onBack: () => void }> = ({ onBack }) => 
 
         <div>
           <h1 className="font-kids text-2xl font-extrabold text-[#23324D]">
-            Ngôi sao của {data.profile.displayName}
+            Ngôi sao của mình · {data.profile.displayName}
           </h1>
           <p className="text-xs text-[#23324D]/75 mt-1">
             Mỗi ngôi sao là lời khen cho sự cố gắng của bạn!
@@ -182,7 +182,7 @@ export const RewardWheelView: React.FC<{ onBack: () => void }> = ({ onBack }) =>
 
     if (!starSummary.wheelEligible) {
       setSpinError(
-        `Con cần đủ ${starSummary.threshold} ★ trong tháng để mở khóa vòng quay (hiện có ${starSummary.monthlyStars} ★).`
+        `Bạn chỉ còn ${starSummary.starsRemainingForWheel} ngôi sao nữa thôi là mở khóa vòng quay tháng này rồi! (Hiện có ${starSummary.monthlyStars}/${starSummary.threshold} ★)`
       );
       return;
     }
@@ -241,7 +241,7 @@ export const RewardWheelView: React.FC<{ onBack: () => void }> = ({ onBack }) =>
       <section className="rounded-[28px] bg-white border border-[#23324D]/8 p-5 text-center shadow-xs space-y-4">
         <div>
           <h1 className="font-kids text-xl sm:text-2xl font-extrabold text-[#23324D]">
-            Vòng quay Quà của con
+            Vòng quay Quà của mình
           </h1>
           <p className="text-xs text-[#23324D]/70 mt-1">
             Tích lũy đủ {starSummary.threshold} ★ trong tháng để mở 1 lượt quay kỷ niệm (Không trừ sao)
@@ -404,7 +404,7 @@ export const RewardWheelView: React.FC<{ onBack: () => void }> = ({ onBack }) =>
               </span>
             </div>
             <h2 className="font-kids text-lg sm:text-xl font-extrabold text-[#23324D]">
-              🎁 Chúc mừng! Con nhận được {visibleSpinResult.rewardTitle}
+              🎁 Chúc mừng! Bạn nhận được {visibleSpinResult.rewardTitle}
             </h2>
             {visibleSpinResult.status === 'pending_parent_confirmation' && (
               <button
@@ -426,12 +426,12 @@ export const RewardWheelView: React.FC<{ onBack: () => void }> = ({ onBack }) =>
               </span>
             </div>
             <p className="text-xs text-[#23324D]/80 text-left">
-              Con cần tích lũy thêm <strong>{starSummary.starsRemainingForWheel} ngôi sao</strong> nữa trong tháng này để hộp quà ở giữa vòng quay tự động mở khóa nhé!
+              Bạn chỉ còn <strong>{starSummary.starsRemainingForWheel} ngôi sao</strong> nữa thôi là hộp quà ở giữa vòng quay tự động mở khóa nhé!
             </p>
           </div>
         ) : (
           <div className="rounded-[20px] bg-[#EAF3FF] border border-[#3978F6]/25 p-3.5 text-xs font-kids font-bold text-[#23324D]">
-            ✨ Con đã đủ {starSummary.monthlyStars}/{starSummary.threshold} ★! Hãy chạm vào <strong>Hộp quà "Quay"</strong> ở chính giữa vòng quay để nhận quà tháng này nhé!
+            ✨ Bạn đã đủ {starSummary.monthlyStars}/{starSummary.threshold} ★! Chạm vào <strong>Hộp quà "Quay"</strong> ở chính giữa vòng quay để nhận quà tháng này nhé!
           </div>
         )}
 
