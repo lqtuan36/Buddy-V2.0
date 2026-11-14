@@ -60,7 +60,7 @@ export function createInitialSeedData(): BuddyAppData {
             actionTitle: 'Lấy sách và vở theo môn học',
             instruction: 'Tìm sách giáo khoa và vở bài tập của các môn ngày mai đặt lên bàn.',
             buddySpeech:
-              'A ha! Mình biết các môn học của ngày mai rồi! Bạn tìm sách và vở tương ứng trên kệ, rồi đặt chúng lên bàn cùng mình nhé!',
+              'Mình biết các môn học của ngày mai rồi! Bạn tìm sách và vở tương ứng trên kệ, rồi đặt chúng lên bàn cùng mình nhé!',
             simpleExplanation:
               'Mỗi môn học trong thời khóa biểu thường có một quyển sách đọc và một quyển vở viết đi cùng nhau. Bạn lấy từng cặp đặt lên mặt bàn nhé!',
             buddyPraise: 'Tuyệt vời! Bạn đã tập hợp đủ sách và vở cho các môn ngày mai rồi!',
@@ -69,7 +69,7 @@ export function createInitialSeedData(): BuddyAppData {
           {
             id: 'step-bp-3',
             stepNumber: 3,
-            actionTitle: 'Xếp sách vào balo ngay ngắn',
+            actionTitle: 'Xếp sách vào cặp ngay ngắn',
             instruction: 'Đặt sách to ở phía sau sát lưng cặp, vở nhỏ ở phía trước.',
             buddySpeech:
               'Đến lúc đưa các bạn sách về ngôi nhà balo rồi! Bạn đặt sách to phía sau sát lưng cặp, vở nhỏ phía trước nhé. Mình cùng thử nào!',
@@ -99,7 +99,7 @@ export function createInitialSeedData(): BuddyAppData {
               'Chỉ còn bước cuối cùng thôi nè! Bạn cài bình nước vào túi bên hông, kéo khóa balo thật gọn rồi đặt cặp ngay cạnh bàn học cho sáng mai nhé!',
             simpleExplanation:
               'Đặt cặp cố định cạnh bàn học giúp sáng mai thức dậy bạn nhìn thấy ngay mà không phải tìm kiếm vội vàng.',
-            buddyPraise: 'Yay! Chúng mình làm được rồi! Cặp sách của bạn đã sẵn sàng cho ngày mai!',
+            buddyPraise: 'Chúng mình làm được rồi! Cặp sách của bạn đã sẵn sàng cho ngày mai!',
             illustrationKey: 'water-bottle',
           },
         ],
@@ -151,7 +151,7 @@ export function createInitialSeedData(): BuddyAppData {
               'Giờ mình làm cho mặt bàn sáng bóng lên nhé! Bạn nhặt những mẩu giấy vụn bỏ vào sọt rác, rồi lấy khăn mềm lau nhẹ khắp mặt bàn nào!',
             simpleExplanation:
               'Bạn chỉ cần lau nhẹ tay từ bên trái sang bên phải mặt bàn là bụi bẩn và vụn tẩy sẽ biến mất hết ngay.',
-            buddyPraise: 'Yay! Góc học tập của bạn sạch bong và thoáng đãng, nhìn thật thích mắt!',
+            buddyPraise: 'Góc học tập của bạn sạch bong và thoáng đãng, nhìn thật thích mắt!',
             illustrationKey: 'wipe-table',
           },
         ],
@@ -203,7 +203,7 @@ export function createInitialSeedData(): BuddyAppData {
               'Chỉ còn một việc nhỏ xíu nữa thôi! Bạn đậy nắp hộp và đẩy nhẹ giỏ đồ chơi sát vào góc phòng để lối đi thật rộng rãi nhé!',
             simpleExplanation:
               'Khi giỏ đồ chơi nằm gọn ở góc phòng, cả nhà mình đi lại sẽ rất thoải mái và an toàn.',
-            buddyPraise: 'Yay! Căn phòng gọn gàng tinh tươm rồi, bạn giữ gìn đồ chơi khéo lắm!',
+            buddyPraise: 'Căn phòng gọn gàng tinh tươm rồi, bạn giữ gìn đồ chơi khéo lắm!',
             illustrationKey: 'toy-box',
           },
         ],
@@ -255,7 +255,7 @@ export function createInitialSeedData(): BuddyAppData {
               'Đến lúc rửa trôi những đám mây bọt dưới làn nước mát rồi! Rửa sạch xong bạn nhớ khóa vòi nước và thấm khô hai bàn tay bằng khăn bông mềm nhé!',
             simpleExplanation:
               'Nhớ khóa vòi nước để tiết kiệm nước sạch và lau khô cả lòng bàn tay lẫn mu bàn tay để không bị ướt áo nhé.',
-            buddyPraise: 'Yay! Đôi bàn tay của bạn vừa thơm vừa sạch tinh tươm!',
+            buddyPraise: 'Đôi bàn tay của bạn vừa thơm vừa sạch tinh tươm!',
             illustrationKey: 'clean-towel',
           },
         ],
@@ -307,7 +307,7 @@ export function createInitialSeedData(): BuddyAppData {
               'Bây giờ hai đứa mình cùng điểm danh lần cuối nhé! Bạn nhìn xem cặp sách, bình nước và bộ quần áo ngày mai đã có mặt đủ cả ba chưa nào?',
             simpleExplanation:
               'Một là cặp sách, hai là bình nước, ba là quần áo ngày mai. Đủ cả ba món là bạn đã sẵn sàng cho ngày mới rồi!',
-            buddyPraise: 'Yay! Chúng mình làm xong rồi! Sáng mai bạn sẽ có một khởi đầu thật nhẹ nhàng và vui vẻ!',
+            buddyPraise: 'Chúng mình làm xong rồi! Sáng mai bạn sẽ có một khởi đầu thật nhẹ nhàng và vui vẻ!',
             illustrationKey: 'check-list',
           },
         ],
@@ -411,7 +411,7 @@ export function createInitialSeedData(): BuddyAppData {
         {
           dayOfWeek: 6,
           dayLabel: 'Thứ Bảy',
-          subjects: ['CLB Vẽ sáng tạo', 'Đọc sách thư viện gia đình'],
+          subjects: ['Câu Lạc Bộ Vẽ sáng tạo', 'Đọc sách thư viện gia đình'],
           supplies: ['Tập vẽ phác thảo', 'Bút chì màu', 'Cuốn truyện yêu thích'],
           note: 'Ngày cuối tuần vui học nhẹ nhàng.',
         },
