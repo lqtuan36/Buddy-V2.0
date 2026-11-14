@@ -149,7 +149,7 @@ export const ChildProfileOverviewView: React.FC = () => {
     const sampleText =
       gender === 'male'
         ? `Chào ${data.profile.displayName}! Mình là Buddy với giọng Nam ấm áp đây!`
-        : `Chào ${data.profile.displayName}! Mình là Buddy với giọng Nữ dịu dàng đây!`;
+        : `${data.profile.displayName} ơi, mình đây! Hộp bút chơi trốn tìm rồi. À, dưới quyển vở kìa! Mình lấy ra nhé.`;
     voiceService.speak(sampleText, { ...pref, gender, muted: false }, 'chat');
   };
 
@@ -157,7 +157,7 @@ export const ChildProfileOverviewView: React.FC = () => {
     const sample =
       pref.gender === 'male'
         ? `Xin chào ${data.profile.displayName}! Hôm nay bạn đã làm được thật nhiều việc tốt cùng mình!`
-        : `Xin chào ${data.profile.displayName}! Mình rất vui được đồng hành cùng bạn mỗi ngày!`;
+        : `${data.profile.displayName} ơi, mình đây! Hộp bút chơi trốn tìm rồi. À, dưới quyển vở kìa! Mình lấy ra nhé.`;
     voiceService.speak(sample, pref, 'chat');
   };
 
@@ -469,7 +469,7 @@ export const ChildProfileOverviewView: React.FC = () => {
               )}
             </div>
             <p className="text-[11px] text-[#23324D]/70 mt-0.5">
-              Dịu dàng, ấm áp
+              Leda · Cô bạn ấm áp, vui tính
             </p>
           </button>
 
@@ -491,7 +491,7 @@ export const ChildProfileOverviewView: React.FC = () => {
               )}
             </div>
             <p className="text-[11px] text-[#23324D]/70 mt-0.5">
-              Vui tươi, khỏe khoắn
+              Puck · Vui tươi, khỏe khoắn
             </p>
           </button>
         </div>
@@ -556,7 +556,7 @@ export const MyBuddySettingsView: React.FC<{ onBack?: () => void }> = ({
     const sampleText =
       gender === 'male'
         ? `Chào ${data.profile.displayName}! Mình là Buddy với giọng đọc Nam tươi vui. Mình sẽ đồng hành cùng bạn mỗi ngày nhé!`
-        : `Chào ${data.profile.displayName}! Mình là Buddy với giọng đọc Nữ trong trẻo. Mình luôn sẵn sàng trò chuyện và đọc truyện cùng bạn!`;
+        : `${data.profile.displayName} ơi, mình đây! Hộp bút chơi trốn tìm rồi. À, dưới quyển vở kìa! Mình lấy ra nhé.`;
     voiceService.speak(
       sampleText,
       { ...pref, gender, muted: false },
@@ -568,7 +568,7 @@ export const MyBuddySettingsView: React.FC<{ onBack?: () => void }> = ({
     const sample =
       pref.gender === 'male'
         ? `Xin chào ${data.profile.displayName}! Đây là giọng đọc Nam tươi vui của mình. Hôm nay bạn đã sẵn sàng thử sức cùng mình chưa nào?`
-        : `Xin chào ${data.profile.displayName}! Đây là giọng đọc Nữ trong trẻo của mình. Tối nay mình cùng nghe một câu chuyện thật hay nhé!`;
+        : `${data.profile.displayName} ơi, mình đây! Hộp bút chơi trốn tìm rồi. À, dưới quyển vở kìa! Mình lấy ra nhé.`;
     voiceService.speak(sample, pref, 'chat');
   };
 
@@ -602,7 +602,7 @@ export const MyBuddySettingsView: React.FC<{ onBack?: () => void }> = ({
             Giọng nói của Buddy
           </h1>
           <p className="text-xs sm:text-sm text-[#23324D]/75 mt-1 max-w-sm mx-auto leading-relaxed">
-            Chọn giọng đọc <strong>Nữ nhí nhảnh (Leda · Cute Cartoon)</strong> hoặc <strong>Nam hoạt bát (Puck)</strong> cho bạn Buddy của {data.profile.displayName}.
+            Chọn giọng đọc <strong>Leda · Cô bạn ấm áp, vui tính</strong> hoặc <strong>Nam hoạt bát (Puck)</strong> cho bạn Buddy của {data.profile.displayName}.
           </p>
         </div>
       </section>
@@ -616,6 +616,20 @@ export const MyBuddySettingsView: React.FC<{ onBack?: () => void }> = ({
           <p className="text-xs text-[#23324D]/70 mt-0.5">
             {voiceCapabilities.voiceAvailabilityNote}
           </p>
+          {voiceState.activeAudioSourceLabel && (
+            <div
+              className={`mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold ${
+                voiceState.isUsingFallback
+                  ? 'bg-[#FFF0C9] text-amber-900 border border-amber-300/60'
+                  : 'bg-[#DDF5E8] text-emerald-900 border border-emerald-300/60'
+              }`}
+            >
+              <Volume2 className="w-3.5 h-3.5 shrink-0" />
+              <span>
+                Nguồn âm thanh đang phát: {voiceState.activeAudioSourceLabel}
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -634,10 +648,10 @@ export const MyBuddySettingsView: React.FC<{ onBack?: () => void }> = ({
                 <BuddyAvatar size="sm" />
                 <div>
                   <h3 className="font-kids text-base font-extrabold text-[#23324D]">
-                    Giọng Nữ nhí nhảnh (Leda)
+                    Leda · Cô bạn ấm áp, vui tính
                   </h3>
                   <p className="text-xs text-[#23324D]/75">
-                    Trong trẻo, đáng yêu kiểu bạn nhỏ hoạt hình (Cute Cartoon)
+                    Trẻ trung, ấm áp, vui tính như cô bạn đồng hành của bạn nhỏ 6–8 tuổi
                   </p>
                 </div>
               </div>
@@ -648,9 +662,11 @@ export const MyBuddySettingsView: React.FC<{ onBack?: () => void }> = ({
 
             <div className="pt-2.5 border-t border-[#23324D]/8 flex items-center justify-between text-xs text-[#23324D]/70">
               <span>
-                {voiceCapabilities.geminiTtsAvailable
-                  ? 'Gemini Leda (Cute Cartoon AI)'
-                  : 'Giọng Nữ trình duyệt'}
+                {voiceState.isUsingFallback && pref.gender === 'female'
+                  ? voiceState.activeAudioSourceLabel || 'Giọng Nữ dự phòng (vi-VN)'
+                  : voiceCapabilities.geminiTtsAvailable
+                  ? 'Leda · Cô bạn ấm áp, vui tính'
+                  : 'Giọng Nữ dự phòng (vi-VN)'}
               </span>
               <span className="font-bold text-[#3978F6]">
                 {pref.gender === 'female' ? 'Đang chọn' : 'Chọn giọng này'}
@@ -673,7 +689,7 @@ export const MyBuddySettingsView: React.FC<{ onBack?: () => void }> = ({
                 <BuddyAvatar size="sm" />
                 <div>
                   <h3 className="font-kids text-base font-extrabold text-[#23324D]">
-                    Giọng Nam ấm áp
+                    Giọng Nam ấm áp (Puck)
                   </h3>
                   <p className="text-xs text-[#23324D]/75">
                     Trầm ấm, rõ ràng và vui tươi
@@ -687,9 +703,11 @@ export const MyBuddySettingsView: React.FC<{ onBack?: () => void }> = ({
 
             <div className="pt-2.5 border-t border-[#23324D]/8 flex items-center justify-between text-xs text-[#23324D]/70">
               <span>
-                {voiceCapabilities.geminiTtsAvailable
+                {voiceState.isUsingFallback && pref.gender === 'male'
+                  ? voiceState.activeAudioSourceLabel || 'Giọng Nam dự phòng (vi-VN)'
+                  : voiceCapabilities.geminiTtsAvailable
                   ? 'Gemini Puck (Chuẩn AI)'
-                  : 'Giọng Nam trình duyệt'}
+                  : 'Giọng Nam dự phòng (vi-VN)'}
               </span>
               <span className="font-bold text-[#3978F6]">
                 {pref.gender === 'male' ? 'Đang chọn' : 'Chọn giọng này'}

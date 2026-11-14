@@ -27,6 +27,8 @@ export interface VoicePlaybackState {
   currentUtteranceId: string | null;
   statusMessage: string;
   autoplayBlocked?: boolean;
+  isUsingFallback?: boolean;
+  activeAudioSourceLabel?: string;
 }
 
 export interface VoiceRuntimeCapabilities {
@@ -214,7 +216,12 @@ class UnifiedVoiceService {
   private updateCapabilityNote(): void {
     if (this.capabilities.geminiTtsAvailable) {
       this.capabilities.voiceAvailabilityNote =
-        'Đang dùng Giọng AI Gemini chế độ Cute Cartoon Companion (Giọng Nữ nhí nhảnh Leda & Giọng Nam hoạt bát Puck cho trẻ 6–8 tuổi).';
+        'Đang dùng giọng AI Gemini tiếng Việt: Leda · Cô bạn ấm áp, vui tính (Nữ) & Puck · Cậu bạn hoạt bát (Nam).';
+      return;
+    }
+
+    if (this.state.isUsingFallback && this.state.activeAudioSourceLabel) {
+      this.capabilities.voiceAvailabilityNote = `Đang phát qua nguồn dự phòng: ${this.state.activeAudioSourceLabel} (do Gemini TTS tạm hết hạn mức hoặc chưa kết nối).`;
       return;
     }
 
@@ -658,7 +665,9 @@ class UnifiedVoiceService {
       this.activeObjectUrl = objectUrl;
       const audio = new Audio(objectUrl);
       audio.volume = Math.max(0, Math.min(1, preference.volume));
-      audio.playbackRate = Math.max(0.75, Math.min(1.25, preference.speechRate || 1.0));
+      const baseRate = preference.speechRate || 1.0;
+      const effectiveRate = context === 'help' ? baseRate * 0.96 : baseRate;
+      audio.playbackRate = Math.max(0.75, Math.min(1.25, effectiveRate));
       this.audioElement = audio;
 
       let hasStartedPlaying = false;
@@ -720,6 +729,29 @@ class UnifiedVoiceService {
             }
             hasStartedPlaying = true;
             const usedFallback = Boolean(payload?.isFallback);
+            const officialVoiceLabel =
+              preference.gender === 'male'
+                ? 'Puck · Cậu bạn hoạt bát'
+                : 'Leda · Cô bạn ấm áp, vui tính';
+            const sourceLabel = usedFallback
+              ? `Giọng tiếng Việt dự phòng trên máy chủ (vi-VN · ${
+                  preference.gender === 'male' ? 'Nam' : 'Nữ'
+                })`
+              : `Gemini ${officialVoiceLabel}`;
+
+            this.state = {
+              status: 'playing',
+              activeEngine: usedFallback ? 'browser-speech-synthesis' : 'gemini-server-tts',
+              activeGender: preference.gender,
+              lastSpokenText: this.state.lastSpokenText,
+              currentUtteranceId: utteranceId,
+              isUsingFallback: usedFallback,
+              activeAudioSourceLabel: sourceLabel,
+              statusMessage: usedFallback
+                ? `Buddy đang đọc (${sourceLabel})...`
+                : `Buddy đang nói (${sourceLabel})...`,
+              autoplayBlocked: false,
+            };
             if (usedFallback) {
               this.capabilities.geminiTtsAvailable = false;
               this.updateCapabilityNote();
@@ -727,21 +759,6 @@ class UnifiedVoiceService {
               this.capabilities.geminiTtsAvailable = true;
               this.updateCapabilityNote();
             }
-            const officialVoiceLabel =
-              preference.gender === 'male' ? 'Nam Gemini Puck' : 'Nữ Gemini Leda (Cute Cartoon)';
-            this.state = {
-              status: 'playing',
-              activeEngine: usedFallback ? 'browser-speech-synthesis' : 'gemini-server-tts',
-              activeGender: preference.gender,
-              lastSpokenText: this.state.lastSpokenText,
-              currentUtteranceId: utteranceId,
-              statusMessage: usedFallback
-                ? `Buddy đang đọc (Giọng ${
-                    preference.gender === 'male' ? 'Nam' : 'Nữ'
-                  } tiếng Việt vi-VN dự phòng)...`
-                : `Buddy đang nói (Giọng ${officialVoiceLabel})...`,
-              autoplayBlocked: false,
-            };
             this.notify();
           })
           .catch((err: unknown) => {
@@ -815,6 +832,8 @@ class UnifiedVoiceService {
       const baseRate =
         context === 'story'
           ? 0.92
+          : context === 'help'
+          ? 0.91
           : context === 'guide'
           ? 0.95
           : context === 'celebration'
@@ -841,13 +860,13 @@ class UnifiedVoiceService {
           viVoices.find((v) => /nu|nữ|female|linh|mai|lan|hoai|my/i.test(v.name)) ||
           viVoices[0];
         utterance.voice = femaleVoice;
-        // Natural cheerful pitch (1.06 - 1.11) without sounding shrill or like baby-talk
+        // Warm, moderate natural pitch for Leda Friendly fallback
         utterance.pitch =
           context === 'celebration'
-            ? 1.11
+            ? 1.06
             : context === 'greeting'
-            ? 1.09
-            : 1.06;
+            ? 1.05
+            : 1.03;
         utterance.rate = Math.max(0.78, Math.min(1.18, baseRate * userRate));
       }
 
@@ -859,17 +878,21 @@ class UnifiedVoiceService {
               resolve('superseded');
               return;
             }
+            const browserSourceLabel = `Giọng tiếng Việt dự phòng trên trình duyệt (Web Speech API · ${
+              preference.gender === 'male' ? 'Nam' : 'Nữ'
+            })`;
             this.state = {
               status: 'playing',
               activeEngine: 'browser-speech-synthesis',
               activeGender: preference.gender,
               lastSpokenText: displayText,
               currentUtteranceId: utteranceId,
-              statusMessage: `Buddy đang đọc (Giọng ${
-                preference.gender === 'male' ? 'Nam' : 'Nữ'
-              } tiếng Việt vi-VN)...`,
+              isUsingFallback: true,
+              activeAudioSourceLabel: browserSourceLabel,
+              statusMessage: `Buddy đang đọc (${browserSourceLabel})...`,
               autoplayBlocked: false,
             };
+            this.updateCapabilityNote();
             this.notify();
           };
 

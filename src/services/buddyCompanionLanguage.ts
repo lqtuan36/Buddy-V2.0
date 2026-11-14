@@ -278,7 +278,7 @@ export function normalizeBuddyCompanionText(
  */
 export function toBuddyCompanionVoiceText(
   rawText: string,
-  context: 'chat' | 'guide' | 'story' | 'celebration' | 'greeting' = 'chat',
+  context: 'chat' | 'guide' | 'help' | 'story' | 'celebration' | 'greeting' = 'chat',
   childName?: string
 ): string {
   if (context === 'story') {

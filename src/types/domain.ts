@@ -7,7 +7,13 @@
 
 export type VoiceGender = 'female' | 'male';
 
-export type VoiceContextType = 'greeting' | 'chat' | 'guide' | 'story' | 'celebration';
+export type VoiceContextType =
+  | 'greeting'
+  | 'chat'
+  | 'guide'
+  | 'help'
+  | 'story'
+  | 'celebration';
 
 export interface VoicePreference {
   gender: VoiceGender;

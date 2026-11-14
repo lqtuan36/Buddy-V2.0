@@ -512,7 +512,44 @@ Nguyên tắc bắt buộc:
     }
   });
 
-  // 3) VIETNAMESE SERVER-SIDE TTS ENDPOINT (Gemini 3.8 Flash Lite TTS with Vietnamese-only style prompt)
+  // Canonical style instruction for Leda (Friendly: warm, cheerful peer companion of 6-8yo child)
+  const LEDA_FRIENDLY_BASE_STYLE =
+    "Nói tiếng Việt tự nhiên như một cô bạn cùng tuổi đang ngồi cạnh một bạn nhỏ 6–8 tuổi. Chất giọng trẻ trung, ấm áp, cao độ vừa, có nét cười nhẹ. Giữ rõ thanh điệu tiếng Việt. Trong lời Buddy trò chuyện, xưng ‘mình’, gọi ‘bạn’. Khi lời thoại có tên riêng, gọi tên thân mật và tự nhiên.\n\nĐọc nguyên văn lời thoại được cung cấp. Đọc gọn các tiếng ‘ơi’, ‘nhé’, ‘nhỉ’. Chỉ bật cười khi lời thoại có tiếng cười.";
+
+  function buildLedaFriendlyStylePrompt(context: string, moodStylePrompt?: string): string {
+    let delivery = '';
+    switch (context) {
+      case 'greeting':
+        delivery =
+          'Gọi tên bạn thân mật rồi nghỉ một nhịp ngắn. Nếu câu chào kết thúc bằng câu hỏi, thể hiện sự tò mò và kết câu mềm.';
+        break;
+      case 'guide':
+      case 'help':
+        delivery =
+          "Nói gọn từng cụm, nhấn nhẹ vào hành động chính. Khi giải thích lúc bạn nhỏ bấm ‘Chưa hiểu’, chậm lại một chút, giọng mềm và kiên nhẫn.";
+        break;
+      case 'celebration':
+        delivery =
+          'Vui lên như hai người bạn vừa cùng làm được một việc. Nhấn vào điều bạn nhỏ vừa hoàn thành và kết câu ấm áp.';
+        break;
+      case 'story':
+      case 'podcast':
+        delivery =
+          'Giữ cùng chất giọng Leda. Để ngữ điệu thay đổi theo tình tiết, kể chậm và êm ở đoạn trước giờ ngủ. Giữ nguyên lời nhân vật, tên riêng và ngôi kể trong truyện.';
+        if (moodStylePrompt) {
+          delivery += ` ${moodStylePrompt}`;
+        }
+        break;
+      case 'chat':
+      default:
+        delivery =
+          'Nói tự nhiên như hai người bạn đang trò chuyện. Khi lời thoại có chi tiết ngộ nghĩnh, kể phần đầu bình thường, ngừng nhẹ trước chi tiết bất ngờ rồi sáng giọng ở từ thú vị.';
+        break;
+    }
+    return `${LEDA_FRIENDLY_BASE_STYLE}\n\n${delivery}`;
+  }
+
+  // 3) VIETNAMESE SERVER-SIDE TTS ENDPOINT (Gemini 3.8 Flash TTS / Lite TTS with separated style metadata)
   app.post('/api/tts', async (req, res) => {
     try {
       const { text = '', gender = 'female', context = 'chat' } = req.body || {};
@@ -524,32 +561,41 @@ Nguyên tắc bắt buộc:
 
       const ai = getGeminiClient();
 
-      // Official Gemini TTS voice mapping (v2.2 Cute Cartoon Companion): female -> Leda, male -> Puck
+      // Official Gemini TTS voice mapping: female -> Leda (Friendly), male -> Puck
       const voiceName = gender === 'male' ? 'Puck' : 'Leda';
 
       const moodInfo = detectParagraphNarrativeMood(cleanText, 0, 1);
-      let styleInstruction =
-        gender === 'male'
-          ? 'Chế độ Cute Cartoon Companion: Giọng bạn nhỏ hoạt hình nam hoạt bát, tinh nghịch, vui tươi và thân thiện kiểu Robot Pika (tiếng Việt chuẩn vi-VN). Nhịp điệu nảy sinh động, hào hứng, phát âm tròn vành rõ từng chữ, như một người bạn nhỏ đáng yêu đang trò chuyện cùng bạn 6–8 tuổi (xưng mình - gọi bạn, không mang giọng người lớn dạy bảo).'
-          : 'Chế độ Cute Cartoon Companion: Giọng bạn nhỏ hoạt hình cực kỳ nhí nhảnh, lém lỉnh, trong trẻo và đáng yêu kiểu Robot Pika (tiếng Việt chuẩn vi-VN). Cao độ tươi sáng, trẻ trung, nhịp điệu nảy vui tươi, nhấn nhá giàu biểu cảm ở các từ cảm thán và câu hỏi, phát âm tròn vành rõ từng chữ, như một người bạn nhỏ thân thiết đang trò chuyện cùng bạn 6–8 tuổi (xưng mình - gọi bạn, không mang giọng người lớn dạy bảo).';
+      let styleInstruction: string;
 
-      if (context === 'story') {
-        styleInstruction += ` ${moodInfo.stylePrompt}`;
-      } else if (context === 'guide') {
-        styleInstruction +=
-          ' Đọc nhí nhảnh, rõ từng từ ở tốc độ vừa phải để bạn nhỏ 6–8 tuổi nghe hiểu ngay hành động cần làm, giọng khích lệ tươi tắn kiểu bạn hoạt hình đồng hành.';
-      } else if (context === 'celebration') {
-        styleInstruction +=
-          ' Giọng reo vui hào hứng, nhí nhảnh, nảy nhịp tươi tắn khen ngợi nỗ lực của bạn nhỏ thật đáng yêu như Robot Pika.';
+      if (gender === 'male') {
+        styleInstruction =
+          'Giọng bạn nhỏ nam (Puck) hoạt bát, vui tươi, ấm áp và thân thiện (tiếng Việt chuẩn vi-VN). Nhịp điệu sinh động, phát âm tròn vành rõ từng chữ, như một người bạn đồng hành đang trò chuyện cùng bạn 6–8 tuổi (xưng mình - gọi bạn, không mang giọng người lớn dạy bảo). Đọc nguyên văn lời thoại được cung cấp.';
+        if (context === 'story') {
+          styleInstruction += ` ${moodInfo.stylePrompt}`;
+        } else if (context === 'guide' || context === 'help') {
+          styleInstruction +=
+            ' Nói gọn từng cụm, nhấn nhẹ vào hành động chính để bạn nhỏ 6–8 tuổi nghe hiểu ngay.';
+        } else if (context === 'celebration') {
+          styleInstruction +=
+            ' Vui lên như hai người bạn vừa cùng làm được một việc, kết câu ấm áp.';
+        } else if (context === 'greeting') {
+          styleInstruction +=
+            ' Gọi tên bạn thân mật rồi nghỉ một nhịp ngắn, kết câu mềm và thân thiện.';
+        }
+      } else {
+        styleInstruction = buildLedaFriendlyStylePrompt(
+          String(context || 'chat'),
+          context === 'story' ? moodInfo.stylePrompt : undefined
+        );
       }
 
-      // Disk cache for /api/tts keyed by v2.2_pika + voiceName (Puck / Leda) so old Kore/Zephyr cache is never served
+      // Disk cache for /api/tts keyed by v2.3_leda_friendly + voiceName (Puck / Leda) + context
       const ttsCacheHash = crypto
         .createHash('sha1')
-        .update(`v2.2_pika|${voiceName}|${gender}|${context}|${cleanText}`)
+        .update(`v2.3_leda_friendly|${voiceName}|${gender}|${context}|${cleanText}`)
         .digest('hex')
         .slice(0, 20);
-      const ttsCachePath = path.join(PODCAST_CACHE_DIR, `tts_v22_${voiceName}_${ttsCacheHash}.wav`);
+      const ttsCachePath = path.join(PODCAST_CACHE_DIR, `tts_v23_${voiceName}_${ttsCacheHash}.wav`);
 
       if (fs.existsSync(ttsCachePath)) {
         try {
@@ -659,7 +705,10 @@ Nguyên tắc bắt buộc:
 
       const voiceGender = gender === 'male' ? 'male' : 'female';
       const voiceName = voiceGender === 'male' ? 'Puck' : 'Leda';
-      const voiceVersion = `gemini-3.8-flash-tts-vi-v2.2-pika-${voiceName}`;
+      const voiceVersion =
+        voiceGender === 'male'
+          ? `gemini-3.8-flash-tts-vi-v2.2-puck-${voiceName}`
+          : `gemini-3.8-flash-tts-vi-v2.3-friendly-${voiceName}`;
 
       const hashSource = JSON.stringify({
         storyId,
@@ -673,7 +722,8 @@ Nguyên tắc bắt buộc:
       });
       const contentHash = crypto.createHash('sha1').update(hashSource).digest('hex').slice(0, 12);
       const safeId = String(storyId).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 32);
-      const audioAssetId = `ep_${safeId}_v${contentVersion}_${voiceGender}_${voiceName}_${contentHash}`;
+      const voiceAssetTag = voiceGender === 'male' ? 'Puck' : 'Leda_v23f';
+      const audioAssetId = `ep_${safeId}_v${contentVersion}_${voiceGender}_${voiceAssetTag}_${contentHash}`;
       const wavFilePath = path.join(PODCAST_CACHE_DIR, `${audioAssetId}.wav`);
       const metaFilePath = path.join(PODCAST_CACHE_DIR, `${audioAssetId}.json`);
 
@@ -782,10 +832,8 @@ Nguyên tắc bắt buộc:
         };
       });
 
-      const baseVoiceDesc =
-        voiceGender === 'male'
-          ? 'Chế độ Cute Cartoon Companion: Giọng bạn nhỏ hoạt hình nam (Puck) kể chuyện thiếu nhi tiếng Việt chuẩn (vi-VN), hoạt bát, ấm áp, sinh động, phát âm tròn vành rõ chữ.'
-          : 'Chế độ Cute Cartoon Companion: Giọng bạn nhỏ hoạt hình nữ (Leda) kể chuyện thiếu nhi tiếng Việt chuẩn (vi-VN), nhí nhảnh, trong trẻo, đáng yêu kiểu Robot Pika, truyền cảm và phát âm tròn vành rõ chữ.';
+      const maleBaseVoiceDesc =
+        'Giọng bạn nhỏ nam (Puck) kể chuyện thiếu nhi tiếng Việt chuẩn (vi-VN), hoạt bát, ấm áp, sinh động, phát âm tròn vành rõ chữ. Đọc nguyên văn lời thoại được cung cấp.';
 
       const totalCharCount = paragraphUnits.reduce(
         (sum, u) => sum + u.normalizedSegment.length,
@@ -808,7 +856,10 @@ Nguyên tắc bắt buộc:
 
           for (let i = 0; i < paragraphUnits.length; i++) {
             const unit = paragraphUnits[i];
-            const scenePrompt = `${baseVoiceDesc} ${unit.moodInfo.stylePrompt}`;
+            const scenePrompt =
+              voiceGender === 'male'
+                ? `${maleBaseVoiceDesc} ${unit.moodInfo.stylePrompt}`
+                : buildLedaFriendlyStylePrompt('podcast', unit.moodInfo.stylePrompt);
             const { pcmBuffer } = await synthesizeVietnameseTtsSegment(
               ai,
               unit.normalizedSegment,
@@ -835,7 +886,10 @@ Nguyên tắc bắt buộc:
       }
 
       if (!fullPcmBuffer) {
-        const episodeStylePrompt = `${baseVoiceDesc} Đọc diễn cảm tự nhiên như kể chuyện cổ tích cho bé trước giờ đi ngủ, ngắt nghỉ nhẹ nhàng giữa các đoạn.`;
+        const episodeStylePrompt =
+          voiceGender === 'male'
+            ? `${maleBaseVoiceDesc} Đọc diễn cảm tự nhiên như kể chuyện cổ tích trước giờ đi ngủ, ngắt nghỉ nhẹ nhàng giữa các đoạn.`
+            : buildLedaFriendlyStylePrompt('podcast');
         const combinedEpisodeScript = paragraphUnits
           .map((u) => u.normalizedSegment)
           .join(' ... ');
@@ -2278,10 +2332,10 @@ async function synthesizeVietnameseFallbackPcm24kMono(
 
   const pcmParts: Buffer[] = [];
   const isMale = voiceName === 'Puck';
-  // Cute Cartoon Companion pitch/tempo tuning for male vs female (Leda Pika-style bright higher pitch)
+  // Friendly companion pitch/tempo tuning for male (Puck) vs female (Leda: warm, moderate pitch)
   const audioFilter = isMale
     ? 'asetrate=24000*0.95,aresample=24000,atempo=1.04'
-    : 'asetrate=24000*1.10,aresample=24000,atempo=0.95';
+    : 'asetrate=24000*1.02,aresample=24000,atempo=0.98';
 
   for (const chunk of chunks) {
     try {

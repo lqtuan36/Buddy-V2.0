@@ -162,7 +162,8 @@ export const BuddyTaskStepRunner: React.FC<{
       stepIdx: number,
       stepId: string,
       totalStepsCount: number,
-      initialDelayMs = 150
+      initialDelayMs = 150,
+      voiceContext: 'guide' | 'help' = 'guide'
     ) => {
       clearStepTimers();
       voiceService.cancel();
@@ -175,7 +176,7 @@ export const BuddyTaskStepRunner: React.FC<{
 
       speechDelayTimeoutRef.current = window.setTimeout(async () => {
         if (flowTokenRef.current !== myToken) return;
-        const res = await voiceService.speak(textToSpeak, data.voicePreference, 'guide');
+        const res = await voiceService.speak(textToSpeak, data.voicePreference, voiceContext);
 
         // Ignore if unmounted, step changed, or another button was pressed while speaking
         if (flowTokenRef.current !== myToken || res.superseded) {
@@ -207,7 +208,8 @@ export const BuddyTaskStepRunner: React.FC<{
       currentStepIndex,
       currentStep.id,
       steps.length,
-      180
+      180,
+      'guide'
     );
 
     return () => {
@@ -238,7 +240,7 @@ export const BuddyTaskStepRunner: React.FC<{
   const handleListenCurrentStep = () => {
     if (isSubmittingStepRef.current || completionResult?.done) return;
     const textToSpeak = buildConciseStepSpeechText(currentStepIndex, currentStep.actionTitle);
-    runSpeakThenCountdown(textToSpeak, currentStepIndex, currentStep.id, steps.length, 40);
+    runSpeakThenCountdown(textToSpeak, currentStepIndex, currentStep.id, steps.length, 40, 'guide');
   };
 
   // "Con chưa hiểu": cancel/reset 10s countdown, show visual HelpCard, speak simpleExplanation, then restart 10s countdown
@@ -250,7 +252,7 @@ export const BuddyTaskStepRunner: React.FC<{
     }
     const cleanTitle = currentStep.actionTitle.replace(/^Bước\s*\d+\s*[:.-]\s*/i, '').trim();
     const helpSpeech = `${cleanTitle}. ${currentStep.simpleExplanation}`;
-    runSpeakThenCountdown(helpSpeech, currentStepIndex, currentStep.id, steps.length, 40);
+    runSpeakThenCountdown(helpSpeech, currentStepIndex, currentStep.id, steps.length, 40, 'help');
   };
 
   // "Bước trước": cancel active speech & timers cleanly and move to the previous step
