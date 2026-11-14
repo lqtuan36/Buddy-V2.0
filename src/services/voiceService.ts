@@ -214,7 +214,7 @@ class UnifiedVoiceService {
   private updateCapabilityNote(): void {
     if (this.capabilities.geminiTtsAvailable) {
       this.capabilities.voiceAvailabilityNote =
-        'Đang dùng Giọng AI Gemini (Hỗ trợ Giọng Nam Puck & Giọng Nữ Zephyr tiếng Việt tự nhiên cho trẻ 6–8 tuổi).';
+        'Đang dùng Giọng AI Gemini chế độ Cute Cartoon Companion (Giọng Nữ nhí nhảnh Leda & Giọng Nam hoạt bát Puck cho trẻ 6–8 tuổi).';
       return;
     }
 
@@ -728,7 +728,7 @@ class UnifiedVoiceService {
               this.updateCapabilityNote();
             }
             const officialVoiceLabel =
-              preference.gender === 'male' ? 'Nam Gemini Puck' : 'Nữ Gemini Zephyr';
+              preference.gender === 'male' ? 'Nam Gemini Puck' : 'Nữ Gemini Leda (Cute Cartoon)';
             this.state = {
               status: 'playing',
               activeEngine: usedFallback ? 'browser-speech-synthesis' : 'gemini-server-tts',

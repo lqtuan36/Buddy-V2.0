@@ -186,7 +186,7 @@ export class LocalDemoRepository implements IDataRepository {
                   (st.contentVersion ?? 1) <= 1;
                 const hasOfficialV21VoiceAsset =
                   typeof st.audioAssetId === 'string' &&
-                  (st.audioAssetId.includes('_Puck_') || st.audioAssetId.includes('_Zephyr_'));
+                  (st.audioAssetId.includes('_Puck_') || st.audioAssetId.includes('_Leda_'));
                 return {
                   ...st,
                   paragraphs:

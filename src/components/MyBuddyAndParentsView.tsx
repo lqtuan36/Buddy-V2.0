@@ -602,7 +602,7 @@ export const MyBuddySettingsView: React.FC<{ onBack?: () => void }> = ({
             Giọng nói của Buddy
           </h1>
           <p className="text-xs sm:text-sm text-[#23324D]/75 mt-1 max-w-sm mx-auto leading-relaxed">
-            Chọn giọng đọc <strong>Nam ấm áp (Puck)</strong> hoặc <strong>Nữ trong trẻo (Zephyr)</strong> cho bạn Buddy của {data.profile.displayName}.
+            Chọn giọng đọc <strong>Nữ nhí nhảnh (Leda · Cute Cartoon)</strong> hoặc <strong>Nam hoạt bát (Puck)</strong> cho bạn Buddy của {data.profile.displayName}.
           </p>
         </div>
       </section>
@@ -634,10 +634,10 @@ export const MyBuddySettingsView: React.FC<{ onBack?: () => void }> = ({
                 <BuddyAvatar size="sm" />
                 <div>
                   <h3 className="font-kids text-base font-extrabold text-[#23324D]">
-                    Giọng Nữ dịu dàng
+                    Giọng Nữ nhí nhảnh (Leda)
                   </h3>
                   <p className="text-xs text-[#23324D]/75">
-                    Trong trẻo, sáng rõ và thân thiện
+                    Trong trẻo, đáng yêu kiểu bạn nhỏ hoạt hình (Cute Cartoon)
                   </p>
                 </div>
               </div>
@@ -649,7 +649,7 @@ export const MyBuddySettingsView: React.FC<{ onBack?: () => void }> = ({
             <div className="pt-2.5 border-t border-[#23324D]/8 flex items-center justify-between text-xs text-[#23324D]/70">
               <span>
                 {voiceCapabilities.geminiTtsAvailable
-                  ? 'Gemini Zephyr (Chuẩn AI)'
+                  ? 'Gemini Leda (Cute Cartoon AI)'
                   : 'Giọng Nữ trình duyệt'}
               </span>
               <span className="font-bold text-[#3978F6]">

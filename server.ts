@@ -524,32 +524,32 @@ Nguyên tắc bắt buộc:
 
       const ai = getGeminiClient();
 
-      // Official Gemini TTS voice mapping (v2.1): female -> Zephyr, male -> Puck
-      const voiceName = gender === 'male' ? 'Puck' : 'Zephyr';
+      // Official Gemini TTS voice mapping (v2.2 Cute Cartoon Companion): female -> Leda, male -> Puck
+      const voiceName = gender === 'male' ? 'Puck' : 'Leda';
 
       const moodInfo = detectParagraphNarrativeMood(cleanText, 0, 1);
       let styleInstruction =
         gender === 'male'
-          ? 'Giọng nam tiếng Việt chuẩn (vi-VN), vui tươi, ấm áp, năng động, phát âm tròn vành rõ từng chữ, nhịp điệu tự nhiên có nhấn nhá nhẹ nhàng, không quá nhanh, như một người bạn nhỏ thân thiện đang trò chuyện cùng bạn 6–8 tuổi (xưng mình - gọi bạn, không mang giọng người lớn dạy bảo).'
-          : 'Giọng nữ tiếng Việt chuẩn (vi-VN), trong trẻo, sáng rõ, thân thiện, phát âm tròn vành rõ từng chữ, nhịp điệu tự nhiên có nhấn nhá nhẹ nhàng, không quá nhanh, như một người bạn nhỏ đáng yêu đang trò chuyện cùng bạn 6–8 tuổi (xưng mình - gọi bạn, không mang giọng người lớn dạy bảo).';
+          ? 'Chế độ Cute Cartoon Companion: Giọng bạn nhỏ hoạt hình nam hoạt bát, tinh nghịch, vui tươi và thân thiện kiểu Robot Pika (tiếng Việt chuẩn vi-VN). Nhịp điệu nảy sinh động, hào hứng, phát âm tròn vành rõ từng chữ, như một người bạn nhỏ đáng yêu đang trò chuyện cùng bạn 6–8 tuổi (xưng mình - gọi bạn, không mang giọng người lớn dạy bảo).'
+          : 'Chế độ Cute Cartoon Companion: Giọng bạn nhỏ hoạt hình cực kỳ nhí nhảnh, lém lỉnh, trong trẻo và đáng yêu kiểu Robot Pika (tiếng Việt chuẩn vi-VN). Cao độ tươi sáng, trẻ trung, nhịp điệu nảy vui tươi, nhấn nhá giàu biểu cảm ở các từ cảm thán và câu hỏi, phát âm tròn vành rõ từng chữ, như một người bạn nhỏ thân thiết đang trò chuyện cùng bạn 6–8 tuổi (xưng mình - gọi bạn, không mang giọng người lớn dạy bảo).';
 
       if (context === 'story') {
         styleInstruction += ` ${moodInfo.stylePrompt}`;
       } else if (context === 'guide') {
         styleInstruction +=
-          ' Đọc ngắn gọn, rõ từng từ ở tốc độ vừa phải để bạn nhỏ 6–8 tuổi nghe hiểu ngay hành động cần làm, giọng khích lệ tươi tắn của người bạn đồng hành.';
+          ' Đọc nhí nhảnh, rõ từng từ ở tốc độ vừa phải để bạn nhỏ 6–8 tuổi nghe hiểu ngay hành động cần làm, giọng khích lệ tươi tắn kiểu bạn hoạt hình đồng hành.';
       } else if (context === 'celebration') {
         styleInstruction +=
-          ' Giọng hào hứng, tươi tắn, khen ngợi nỗ lực của bạn nhỏ thật tự nhiên và ấm áp như một người bạn thân.';
+          ' Giọng reo vui hào hứng, nhí nhảnh, nảy nhịp tươi tắn khen ngợi nỗ lực của bạn nhỏ thật đáng yêu như Robot Pika.';
       }
 
-      // Disk cache for /api/tts keyed by v2.1 + voiceName (Puck / Zephyr) so old Kore cache is never served
+      // Disk cache for /api/tts keyed by v2.2_pika + voiceName (Puck / Leda) so old Kore/Zephyr cache is never served
       const ttsCacheHash = crypto
         .createHash('sha1')
-        .update(`v2.1|${voiceName}|${gender}|${context}|${cleanText}`)
+        .update(`v2.2_pika|${voiceName}|${gender}|${context}|${cleanText}`)
         .digest('hex')
         .slice(0, 20);
-      const ttsCachePath = path.join(PODCAST_CACHE_DIR, `tts_v21_${voiceName}_${ttsCacheHash}.wav`);
+      const ttsCachePath = path.join(PODCAST_CACHE_DIR, `tts_v22_${voiceName}_${ttsCacheHash}.wav`);
 
       if (fs.existsSync(ttsCachePath)) {
         try {
@@ -658,8 +658,8 @@ Nguyên tắc bắt buộc:
       }
 
       const voiceGender = gender === 'male' ? 'male' : 'female';
-      const voiceName = voiceGender === 'male' ? 'Puck' : 'Zephyr';
-      const voiceVersion = `gemini-3.8-flash-lite-tts-vi-v2.1-${voiceName}`;
+      const voiceName = voiceGender === 'male' ? 'Puck' : 'Leda';
+      const voiceVersion = `gemini-3.8-flash-tts-vi-v2.2-pika-${voiceName}`;
 
       const hashSource = JSON.stringify({
         storyId,
@@ -784,8 +784,8 @@ Nguyên tắc bắt buộc:
 
       const baseVoiceDesc =
         voiceGender === 'male'
-          ? 'Giọng nam kể chuyện thiếu nhi tiếng Việt chuẩn (vi-VN), trầm ấm, truyền cảm, phát âm tròn vành rõ chữ.'
-          : 'Giọng nữ kể chuyện thiếu nhi tiếng Việt chuẩn (vi-VN), dịu dàng, trong trẻo, truyền cảm, phát âm tròn vành rõ chữ.';
+          ? 'Chế độ Cute Cartoon Companion: Giọng bạn nhỏ hoạt hình nam (Puck) kể chuyện thiếu nhi tiếng Việt chuẩn (vi-VN), hoạt bát, ấm áp, sinh động, phát âm tròn vành rõ chữ.'
+          : 'Chế độ Cute Cartoon Companion: Giọng bạn nhỏ hoạt hình nữ (Leda) kể chuyện thiếu nhi tiếng Việt chuẩn (vi-VN), nhí nhảnh, trong trẻo, đáng yêu kiểu Robot Pika, truyền cảm và phát âm tròn vành rõ chữ.';
 
       const totalCharCount = paragraphUnits.reduce(
         (sum, u) => sum + u.normalizedSegment.length,
@@ -978,7 +978,7 @@ Nguyên tắc bắt buộc:
         detail,
         actualDurationSeconds: estDuration,
         sceneTimeline: fallbackTimeline,
-        voiceId: gender === 'male' ? 'Puck' : 'Zephyr',
+        voiceId: gender === 'male' ? 'Puck' : 'Leda',
         voiceGender: gender === 'male' ? 'male' : 'female',
       });
     }
@@ -2278,10 +2278,10 @@ async function synthesizeVietnameseFallbackPcm24kMono(
 
   const pcmParts: Buffer[] = [];
   const isMale = voiceName === 'Puck';
-  // Slight pitch/tempo tuning for male vs female voice
+  // Cute Cartoon Companion pitch/tempo tuning for male vs female (Leda Pika-style bright higher pitch)
   const audioFilter = isMale
-    ? 'asetrate=24000*0.92,aresample=24000,atempo=1.06'
-    : 'aresample=24000';
+    ? 'asetrate=24000*0.95,aresample=24000,atempo=1.04'
+    : 'asetrate=24000*1.10,aresample=24000,atempo=0.95';
 
   for (const chunk of chunks) {
     try {
