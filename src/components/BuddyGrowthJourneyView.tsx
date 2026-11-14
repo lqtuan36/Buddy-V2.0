@@ -268,11 +268,15 @@ export const BuddyGrowthJourneyView: React.FC = () => {
     topic: GrowthQualityTopic,
     exp: GrowthExperienceItem
   ) => {
-    const cleanPrompt = toBuddyCompanionUiText(exp.promptOrStory);
+    const cleanSpokenBody = toBuddyCompanionUiText(
+      exp.buddySpeech || exp.promptOrStory
+    );
     const cleanTitle = toBuddyCompanionUiText(exp.title);
 
     if (exp.type === 'explore') {
-      const textToSpeak = `${topic.title}. Câu chuyện nhỏ: ${cleanTitle}. ${cleanPrompt}`;
+      const textToSpeak = exp.buddySpeech
+        ? cleanSpokenBody
+        : `${topic.title}. Câu chuyện nhỏ: ${cleanTitle}. ${cleanSpokenBody}`;
       voiceService.speak(textToSpeak, data.voicePreference, 'guide');
       return;
     }
@@ -284,23 +288,31 @@ export const BuddyGrowthJourneyView: React.FC = () => {
               .map((c, i) => `Cách ${i + 1}: ${toBuddyCompanionUiText(c)}`)
               .join('. ')}.`
           : '';
-      const textToSpeak = `${cleanTitle}. ${cleanPrompt}${choicesText}`;
+      const textToSpeak = exp.buddySpeech
+        ? `${cleanSpokenBody}${choicesText}`
+        : `${cleanTitle}. ${cleanSpokenBody}${choicesText}`;
       voiceService.speak(textToSpeak, data.voicePreference, 'guide');
       return;
     }
 
     if (exp.type === 'practice') {
+      if (exp.buddySpeech) {
+        voiceService.speak(cleanSpokenBody, data.voicePreference, 'guide');
+        return;
+      }
       const actionText = exp.actionSuggestion
         ? ` Việc mình cùng thử làm hôm nay là: ${toBuddyCompanionUiText(
             exp.actionSuggestion
           )}.`
         : '';
-      const textToSpeak = `Thử thách thực hành: ${cleanTitle}. ${cleanPrompt}${actionText}`;
+      const textToSpeak = `Thử thách thực hành: ${cleanTitle}. ${cleanSpokenBody}${actionText}`;
       voiceService.speak(textToSpeak, data.voicePreference, 'guide');
       return;
     }
 
-    const textToSpeak = `Hôm nay bạn cảm thấy thế nào? ${cleanPrompt}`;
+    const textToSpeak = exp.buddySpeech
+      ? cleanSpokenBody
+      : `Hôm nay bạn cảm thấy thế nào? ${cleanSpokenBody}`;
     voiceService.speak(textToSpeak, data.voicePreference, 'guide');
   };
 
@@ -329,18 +341,36 @@ export const BuddyGrowthJourneyView: React.FC = () => {
     }
   };
 
-  // Step 2 ("Hiểu") choice click: select choice and speak Buddy's warm feedback
+  // Step 2 ("Hiểu") choice click: select choice and speak Buddy's specific feedback (warm celebration or gentle nudge)
   const handlePickUnderstandChoice = (
     exp: GrowthExperienceItem,
-    choice: string
+    choice: string,
+    choiceIdx?: number
   ) => {
     setSelectedSingleChoice(choice);
     setReflectionInput(choice);
-    const praise = toBuddyCompanionUiText(
-      exp.buddyWarmFeedback ||
-        'Tuyệt quá! Cách bạn chọn thật ấm áp và đáng khen!'
+    const resolvedIdx =
+      typeof choiceIdx === 'number'
+        ? choiceIdx
+        : (exp.choices || []).findIndex(
+            (c) => c === choice || toBuddyCompanionUiText(c) === choice
+          );
+    const specificFeedback =
+      resolvedIdx >= 0 && exp.choiceFeedbacks?.[resolvedIdx]
+        ? exp.choiceFeedbacks[resolvedIdx]
+        : exp.buddyWarmFeedback ||
+          'Tuyệt quá! Cách bạn chọn thật ấm áp và đáng khen!';
+    const isGentleRedirect =
+      resolvedIdx >= 0 &&
+      Array.isArray(exp.recommendedChoiceIndices) &&
+      exp.recommendedChoiceIndices.length > 0 &&
+      !exp.recommendedChoiceIndices.includes(resolvedIdx);
+    const feedbackText = toBuddyCompanionUiText(specificFeedback);
+    voiceService.speak(
+      feedbackText,
+      data.voicePreference,
+      isGentleRedirect ? 'guide' : 'celebration'
     );
-    voiceService.speak(praise, data.voicePreference, 'celebration');
   };
 
   // Step 2 ("Hiểu") primary action: save selected answer and advance to Step 3 ("Thực hành")
@@ -1163,7 +1193,8 @@ export const BuddyGrowthJourneyView: React.FC = () => {
                               onClick={() =>
                                 handlePickUnderstandChoice(
                                   activeExperience,
-                                  cleanChoice
+                                  cleanChoice,
+                                  idx
                                 )
                               }
                               className={`w-full min-h-[56px] text-left p-3.5 rounded-[20px] border-2 font-kids font-bold text-xs sm:text-sm transition-all cursor-pointer flex items-center justify-between gap-3 ${
@@ -1190,21 +1221,52 @@ export const BuddyGrowthJourneyView: React.FC = () => {
                         })}
                       </div>
 
-                      {selectedSingleChoice && (
-                        <div className="rounded-[20px] bg-[#DDF5E8]/65 border border-[#2EC27E]/50 p-3.5 flex items-start gap-3 animate-fadeIn">
-                          <BuddyAvatar
-                            size="xs"
-                            isSpeaking={isSpeaking}
-                            mood="celebrating"
-                          />
-                          <p className="text-xs sm:text-sm font-kids font-bold text-[#188050] leading-relaxed">
-                            {toBuddyCompanionUiText(
-                              activeExperience.buddyWarmFeedback ||
-                                'Tuyệt vời! Lựa chọn của bạn thật ấm áp và ý nghĩa!'
-                            )}
-                          </p>
-                        </div>
-                      )}
+                      {selectedSingleChoice && (() => {
+                        const pickedIdx = (activeExperience.choices || []).findIndex(
+                          (c) =>
+                            c === selectedSingleChoice ||
+                            toBuddyCompanionUiText(c) === selectedSingleChoice
+                        );
+                        const specificFeedback =
+                          pickedIdx >= 0 &&
+                          activeExperience.choiceFeedbacks?.[pickedIdx]
+                            ? activeExperience.choiceFeedbacks[pickedIdx]
+                            : activeExperience.buddyWarmFeedback ||
+                              'Tuyệt vời! Lựa chọn của bạn thật ấm áp và ý nghĩa!';
+                        const isGentleRedirect =
+                          pickedIdx >= 0 &&
+                          Array.isArray(
+                            activeExperience.recommendedChoiceIndices
+                          ) &&
+                          activeExperience.recommendedChoiceIndices.length > 0 &&
+                          !activeExperience.recommendedChoiceIndices.includes(
+                            pickedIdx
+                          );
+                        return (
+                          <div
+                            className={`rounded-[20px] p-3.5 flex items-start gap-3 animate-fadeIn ${
+                              isGentleRedirect
+                                ? 'bg-[#FFF5D6] border border-[#F59E0B]/45'
+                                : 'bg-[#DDF5E8]/65 border border-[#2EC27E]/50'
+                            }`}
+                          >
+                            <BuddyAvatar
+                              size="xs"
+                              isSpeaking={isSpeaking}
+                              mood={isGentleRedirect ? 'thinking' : 'celebrating'}
+                            />
+                            <p
+                              className={`text-xs sm:text-sm font-kids font-bold leading-relaxed ${
+                                isGentleRedirect
+                                  ? 'text-[#7A4F00]'
+                                  : 'text-[#188050]'
+                              }`}
+                            >
+                              {toBuddyCompanionUiText(specificFeedback)}
+                            </p>
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
 

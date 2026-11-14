@@ -62,9 +62,10 @@ export type IllustrationKey =
 export interface TaskStep {
   id: string;
   stepNumber: number;
-  actionTitle: string; // 1 clear action
-  instruction: string; // Concise Vietnamese instruction
-  simpleExplanation: string; // Shown when child taps "Con chưa hiểu"
+  actionTitle: string; // 1 clear action shown on card
+  instruction: string; // Concise Vietnamese instruction shown on card
+  buddySpeech?: string; // 3-beat companion spoken guidance (Gợi mở -> Hình dung -> Mời hành động)
+  simpleExplanation: string; // Shown & spoken when child taps "Mình chưa hiểu"
   buddyPraise: string; // Supportive response when step is completed
   illustrationKey: IllustrationKey;
 }
@@ -314,9 +315,12 @@ export interface GrowthExperienceItem {
   type: GrowthExperienceType;
   typeLabel: 'Khám phá' | 'Hiểu' | 'Thực hành' | 'Chia sẻ';
   title: string;
-  promptOrStory: string;
+  promptOrStory: string; // Concise on-screen story / question / prompt
+  buddySpeech?: string; // Richer spoken companion narration for TTS read-aloud
   inputType?: GrowthActivityInputType;
-  choices?: string[]; // Optional gentle reflection/understanding options (non-judgmental)
+  choices?: string[]; // Distinct behavioral/reflection options
+  choiceFeedbacks?: string[]; // Per-choice gentle guidance or warm praise
+  recommendedChoiceIndices?: number[]; // Indices of constructive choices in 'understand' step
   actionSuggestion?: string; // Real-life practice suggestion or sharing prompt
   buddyWarmFeedback: string;
   status: GrowthExperienceStatus;

@@ -512,22 +512,27 @@ export const TaskStepCard: React.FC<TaskStepCardProps> = ({
           />
         </div>
 
-        {/* 3. Step Number & Concise Action Title ONLY (No default description/subtitle) */}
-        <div className="text-center space-y-1 px-2">
+        {/* 3. Step Number, Concise Action Title & Short On-Card Guide (Shorter than Buddy's spoken 3-beat script) */}
+        <div className="text-center space-y-1.5 px-2">
           <span className="inline-block text-xs font-kids font-extrabold text-[#3978F6]">
             Bước {stepIndex + 1} / {totalSteps}
           </span>
           <h2 className="font-kids text-xl sm:text-2xl font-extrabold text-[#23324D] leading-snug">
             Bước {stepIndex + 1}: {cleanActionTitle}
           </h2>
+          {step.instruction && (
+            <p className="text-xs sm:text-sm font-semibold text-[#5C6F8C] max-w-md mx-auto leading-relaxed">
+              {normalizeBuddyCompanionText(step.instruction)}
+            </p>
+          )}
         </div>
 
-        {/* 4. Friendly Voice & 10-Second Practice Countdown Status Bar */}
+        {/* 4. 3-Phase Companion Rhythm: (1) Listen to Guidance -> (2) 10s Practice Window -> (3) Child Confirms Completion */}
         <div className="rounded-[22px] bg-[#F7F9FD] border border-[#3978F6]/18 p-3.5 sm:p-4 space-y-2.5">
           {flowPhase === 'speaking' && (
             <div className="flex items-center justify-center gap-2.5 text-[#3978F6] font-kids font-extrabold text-xs sm:text-sm py-1">
               <Volume2 className="w-4 h-4 shrink-0 motion-safe:animate-pulse" />
-              <span>Mình đang đọc hướng dẫn Bước {stepIndex + 1}...</span>
+              <span>Mình đang thủ thỉ hướng dẫn Bước {stepIndex + 1} cùng bạn...</span>
             </div>
           )}
 
@@ -551,18 +556,18 @@ export const TaskStepCard: React.FC<TaskStepCardProps> = ({
             <>
               <div className="flex items-center justify-between gap-2 text-xs sm:text-sm font-kids font-extrabold">
                 <span className="text-[#23324D]">
-                  {flowPhase === 'ready_final' && isFinalStep
-                    ? '✨ Bạn đã thực hành xong tất cả các bước!'
-                    : '⏱️ Thời gian bạn tự thực hành:'}
+                  {flowPhase === 'ready_final'
+                    ? `✨ Bạn đã làm xong Bước ${stepIndex + 1} chưa nào?`
+                    : '⏱️ Thời gian bạn thực hiện hành động:'}
                 </span>
-                {!(flowPhase === 'ready_final' && isFinalStep) && (
+                {flowPhase === 'countdown' && (
                   <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#EAF3FF] text-[#3978F6] tabular-nums">
                     {safeCountdown} giây
                   </span>
                 )}
               </div>
 
-              {!(flowPhase === 'ready_final' && isFinalStep) && (
+              {flowPhase === 'countdown' && (
                 <div className="w-full h-2.5 rounded-full bg-[#EAF3FF] overflow-hidden">
                   <div
                     className="h-full rounded-full bg-gradient-to-r from-[#3978F6] to-[#2EC27E] transition-all duration-700 ease-linear"
@@ -572,15 +577,17 @@ export const TaskStepCard: React.FC<TaskStepCardProps> = ({
               )}
 
               <p className="text-[11px] sm:text-xs font-semibold text-[#5C6F8C] text-center">
-                {isFinalStep
-                  ? 'Khi làm xong bước cuối này, bạn bấm nút hoàn thành nhiệm vụ bên dưới nhé!'
-                  : `Hết ${safeCountdown} giây mình sẽ cùng chuyển sang Bước ${stepIndex + 2}.`}
+                {flowPhase === 'ready_final'
+                  ? isFinalStep
+                    ? 'Khi đã kiểm tra xong bước cuối, bạn bấm nút xanh bên dưới để hoàn thành nhiệm vụ nhé!'
+                    : `Khi bạn thực hiện xong, hãy bấm nút xanh bên dưới để mình cùng sang Bước ${stepIndex + 2} nhé!`
+                  : 'Mình đợi bạn thực hành nhé! Làm xong lúc nào bạn cũng có thể bấm nút xác nhận bên dưới.'}
               </p>
             </>
           )}
         </div>
 
-        {/* 5. Helper Controls ("Nghe lại", "Mình chưa hiểu", "Bước trước") + Final Step Single CTA */}
+        {/* 5. Helper Controls ("Nghe lại", "Mình chưa hiểu", "Bước trước") + Child Confirmation CTA */}
         <div className="space-y-3 pt-1">
           <div className="grid grid-cols-3 gap-2 sm:gap-3">
             <button
@@ -613,19 +620,27 @@ export const TaskStepCard: React.FC<TaskStepCardProps> = ({
             </button>
           </div>
 
-          {isFinalStep && (
-            <button
-              type="button"
-              onClick={onCompleteStep}
-              disabled={isSubmitting}
-              className="w-full min-h-[54px] px-6 py-3.5 rounded-[18px] bg-[#2EC27E] hover:bg-[#24a86b] disabled:opacity-60 disabled:pointer-events-none text-white font-kids font-extrabold text-base sm:text-lg shadow-[0_10px_24px_rgba(46,194,126,0.28)] flex items-center justify-center gap-2 transition-transform active:scale-[0.98] cursor-pointer"
-            >
-              <CheckCircle2 className="w-5 h-5 shrink-0" />
-              <span>
-                {isSubmitting ? 'Đang lưu nhiệm vụ...' : 'Mình đã hoàn thành nhiệm vụ'}
-              </span>
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={onCompleteStep}
+            disabled={isSubmitting}
+            className={`w-full min-h-[54px] px-6 py-3.5 rounded-[18px] disabled:opacity-60 disabled:pointer-events-none text-white font-kids font-extrabold text-base sm:text-lg flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer ${
+              isFinalStep
+                ? 'bg-[#2EC27E] hover:bg-[#24a86b] shadow-[0_10px_24px_rgba(46,194,126,0.28)]'
+                : flowPhase === 'ready_final'
+                ? 'bg-[#2EC27E] hover:bg-[#24a86b] shadow-[0_10px_24px_rgba(46,194,126,0.26)]'
+                : 'bg-[#3978F6] hover:bg-[#2964DF] shadow-[0_8px_20px_rgba(57,120,246,0.22)]'
+            }`}
+          >
+            <CheckCircle2 className="w-5 h-5 shrink-0" />
+            <span>
+              {isSubmitting
+                ? 'Đang lưu nhiệm vụ...'
+                : isFinalStep
+                ? 'Mình đã hoàn thành nhiệm vụ!'
+                : 'Mình làm xong bước này rồi! →'}
+            </span>
+          </button>
         </div>
       </div>
 

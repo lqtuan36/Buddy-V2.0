@@ -363,7 +363,7 @@ export const BuddyChatView: React.FC<{
             simpleExplanation={safeExplanation}
             illustrationKey={targetStep?.illustrationKey || targetTask.coverIllustration}
             onListenHelp={() =>
-              voiceService.speak(safeExplanation, data.voicePreference, 'guide_help')
+              voiceService.speak(safeExplanation, data.voicePreference, 'help')
             }
             onDismissOrAction={() => {
               stopAndCleanupMicSession();

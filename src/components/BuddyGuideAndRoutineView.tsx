@@ -107,17 +107,48 @@ export const BuddyTaskStepRunner: React.FC<{
     };
   }, [taskId, clearStepTimers]);
 
-  const buildConciseStepSpeechText = (stepIdx: number, rawActionTitle: string): string => {
-    const cleanTitle = rawActionTitle.replace(/^Bước\s*\d+\s*[:.-]\s*/i, '').trim();
-    return `Bước ${stepIdx + 1}: ${cleanTitle}`;
+  /**
+   * Builds a 3-beat companion voice script (Gợi mở -> Hình dung -> Mời hành động) for each task step.
+   * Uses `step.buddySpeech` when curated, and falls back to a natural companion synthesis of
+   * `actionTitle` + `instruction` without mechanical duplication for custom parent-created steps.
+   */
+  const buildConciseStepSpeechText = (
+    stepIdx: number,
+    stepObj: typeof currentStep
+  ): string => {
+    if (!stepObj) return '';
+    if (stepObj.buddySpeech && stepObj.buddySpeech.trim()) {
+      return stepObj.buddySpeech.trim();
+    }
+    const cleanTitle = (stepObj.actionTitle || '')
+      .replace(/^Bước\s*\d+\s*[:.-]\s*/i, '')
+      .trim();
+    const cleanInstruction = (stepObj.instruction || '').trim();
+    const openers = [
+      'Bạn ơi! Mình cùng bắt đầu bước đầu tiên nhé!',
+      'A ha! Bây giờ mình cùng sang bước tiếp theo nha!',
+      'Tuyệt lắm! Tiếp theo chúng mình cùng làm việc này nhé!',
+      'Sắp xong rồi nè! Mình cùng thực hiện bước này nha!',
+      'Chỉ còn bước cuối cùng thôi! Mình cùng hoàn tất nhé!',
+    ];
+    const opener = openers[stepIdx % openers.length];
+    if (
+      cleanInstruction &&
+      !cleanInstruction.toLowerCase().includes(cleanTitle.toLowerCase())
+    ) {
+      return `${opener} ${cleanTitle}. ${cleanInstruction}`;
+    }
+    return `${opener} ${cleanInstruction || cleanTitle} Mình cùng thử ngay nào!`;
   };
 
   /**
    * Starts the 10-second practice countdown for `stepIdx` guarded by `expectedToken`.
    * Only called AFTER Buddy's voice finishes speaking.
+   * When the 10s practice window completes, transitions to `ready_final` so the child
+   * confirms when they have actually finished the physical action (never auto-completes behind the child's back).
    */
   const startTenSecondCountdown = useCallback(
-    (stepIdx: number, stepId: string, totalStepsCount: number, expectedToken: number) => {
+    (_stepIdx: number, _stepId: string, _totalStepsCount: number, expectedToken: number) => {
       if (flowTokenRef.current !== expectedToken) return;
       clearStepTimers();
 
@@ -136,18 +167,10 @@ export const BuddyTaskStepRunner: React.FC<{
           return;
         }
 
-        // Countdown reached 0
+        // 10s practice window reached 0: wait for child's confirmation tap
         clearStepTimers();
         setCountdownSeconds(0);
-        setCompletedStepIds((prev) => (prev.includes(stepId) ? prev : [...prev, stepId]));
-
-        if (stepIdx + 1 < totalStepsCount) {
-          setShowSimpleHint(false);
-          setCurrentStepIndex(stepIdx + 1);
-        } else {
-          // Final step finished 10s practice window: keep on final card so child taps "Con đã hoàn thành nhiệm vụ"
-          setFlowPhase('ready_final');
-        }
+        setFlowPhase('ready_final');
       }, 1000);
     },
     [clearStepTimers]
@@ -196,15 +219,15 @@ export const BuddyTaskStepRunner: React.FC<{
     [clearStepTimers, data.voicePreference, startTenSecondCountdown]
   );
 
-  // Auto-read concise step title when entering the runner or advancing to a new step
+  // Auto-read 3-beat companion step guidance when entering the runner or advancing to a new step
   useEffect(() => {
     if (!task || !currentStep || completionResult?.done) return;
-    const conciseTitleSpeech = buildConciseStepSpeechText(
+    const stepCompanionSpeech = buildConciseStepSpeechText(
       currentStepIndex,
-      currentStep.actionTitle
+      currentStep
     );
     runSpeakThenCountdown(
-      conciseTitleSpeech,
+      stepCompanionSpeech,
       currentStepIndex,
       currentStep.id,
       steps.length,
@@ -236,14 +259,14 @@ export const BuddyTaskStepRunner: React.FC<{
 
   const isCurrentStepDone = completedStepIds.includes(currentStep.id);
 
-  // "Nghe lại": cancel/reset 10s countdown, speak concise step title again, then restart 10s countdown
+  // "Nghe lại": cancel/reset 10s countdown, speak 3-beat companion step guidance again, then restart 10s countdown
   const handleListenCurrentStep = () => {
     if (isSubmittingStepRef.current || completionResult?.done) return;
-    const textToSpeak = buildConciseStepSpeechText(currentStepIndex, currentStep.actionTitle);
+    const textToSpeak = buildConciseStepSpeechText(currentStepIndex, currentStep);
     runSpeakThenCountdown(textToSpeak, currentStepIndex, currentStep.id, steps.length, 40, 'guide');
   };
 
-  // "Con chưa hiểu": cancel/reset 10s countdown, show visual HelpCard, speak simpleExplanation, then restart 10s countdown
+  // "Mình chưa hiểu": cancel/reset 10s countdown, show visual HelpCard, speak simpleExplanation gently, then restart 10s countdown
   const handleNeedHelp = () => {
     if (isSubmittingStepRef.current || completionResult?.done) return;
     setShowSimpleHint(true);
@@ -251,7 +274,7 @@ export const BuddyTaskStepRunner: React.FC<{
       setHelpRequestedStepIds((prev) => [...prev, currentStep.id]);
     }
     const cleanTitle = currentStep.actionTitle.replace(/^Bước\s*\d+\s*[:.-]\s*/i, '').trim();
-    const helpSpeech = `${cleanTitle}. ${currentStep.simpleExplanation}`;
+    const helpSpeech = `Để mình gợi ý cách làm bước ${cleanTitle} dễ hiểu hơn nhé! ${currentStep.simpleExplanation}`;
     runSpeakThenCountdown(helpSpeech, currentStepIndex, currentStep.id, steps.length, 40, 'help');
   };
 
@@ -267,9 +290,24 @@ export const BuddyTaskStepRunner: React.FC<{
     setCurrentStepIndex((idx) => Math.max(0, idx - 1));
   };
 
-  // Final Step CTA ("Con đã hoàn thành nhiệm vụ"): record all viewed steps, call completeTaskStepRun() ONCE, open ResultCard
-  const handleCompleteFinalTask = async () => {
+  // Child confirms step completion:
+  // - On intermediate steps (1 .. N-1): marks current step completed and moves to next step
+  // - On final step (N): records all completed steps, calls completeTaskStepRun() ONCE, opens ResultCard
+  const handleCompleteCurrentOrFinalStep = async () => {
     if (isSubmittingStepRef.current || completionResult?.done) return;
+
+    if (currentStepIndex + 1 < steps.length) {
+      flowTokenRef.current += 1;
+      clearStepTimers();
+      voiceService.cancel();
+      setCompletedStepIds((prev) =>
+        prev.includes(currentStep.id) ? prev : [...prev, currentStep.id]
+      );
+      setShowSimpleHint(false);
+      setCurrentStepIndex((idx) => idx + 1);
+      return;
+    }
+
     isSubmittingStepRef.current = true;
     setIsSubmittingStep(true);
 
@@ -374,7 +412,7 @@ export const BuddyTaskStepRunner: React.FC<{
         showSimpleHint={showSimpleHint}
         countdownSeconds={countdownSeconds}
         flowPhase={flowPhase}
-        onCompleteStep={handleCompleteFinalTask}
+        onCompleteStep={handleCompleteCurrentOrFinalStep}
         onNeedHelp={handleNeedHelp}
         onRepeatAudio={handleListenCurrentStep}
         onPrevStep={handlePrevStep}

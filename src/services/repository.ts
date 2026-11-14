@@ -151,21 +151,39 @@ export class LocalDemoRepository implements IDataRepository {
         tasks:
           Array.isArray(parsed.tasks) && parsed.tasks.length > 0
             ? parsed.tasks.map((t) => {
+                const seedTask = seed.tasks.find((st) => st.id === t.id);
                 // Ensure task-backpack is upgraded to the 5 distinct Warm Storybook steps in v1.3+
-                if (t.id === 'task-backpack' && t.steps.length < 5) {
-                  return seed.tasks.find((st) => st.id === 'task-backpack') || t;
+                if (t.id === 'task-backpack' && t.steps.length < 5 && seedTask) {
+                  return seedTask;
                 }
+                const isDefaultApprovedSeedTask =
+                  Boolean(seedTask) && t.lastApprovedAt === '2026-11-01T08:00:00.000Z';
                 return {
                   ...t,
                   steps: Array.isArray(t.steps)
-                    ? t.steps.map((s) => {
+                    ? t.steps.map((s, sIdx) => {
+                        const seedStep =
+                          seedTask?.steps.find((ss) => ss.id === s.id) ||
+                          seedTask?.steps[sIdx];
+                        if (isDefaultApprovedSeedTask && seedStep) {
+                          return {
+                            ...s,
+                            actionTitle: seedStep.actionTitle,
+                            instruction: seedStep.instruction,
+                            buddySpeech: seedStep.buddySpeech,
+                            simpleExplanation: seedStep.simpleExplanation,
+                            buddyPraise: seedStep.buddyPraise,
+                          };
+                        }
                         const stripped = (s.actionTitle || '').replace(/^Bé\s+/i, '');
                         const cleanTitle = stripped
                           ? stripped.charAt(0).toUpperCase() + stripped.slice(1)
                           : s.actionTitle;
                         return {
+                          ...(seedStep || {}),
                           ...s,
                           actionTitle: cleanTitle,
+                          buddySpeech: s.buddySpeech || seedStep?.buddySpeech,
                         };
                       })
                     : [],
@@ -272,7 +290,10 @@ export class LocalDemoRepository implements IDataRepository {
                             ...savedExp,
                             title: seedExp.title,
                             promptOrStory: seedExp.promptOrStory,
+                            buddySpeech: seedExp.buddySpeech,
                             choices: seedExp.choices,
+                            choiceFeedbacks: seedExp.choiceFeedbacks,
+                            recommendedChoiceIndices: seedExp.recommendedChoiceIndices,
                             actionSuggestion: seedExp.actionSuggestion ?? savedExp.actionSuggestion,
                             buddyWarmFeedback: seedExp.buddyWarmFeedback,
                           };
