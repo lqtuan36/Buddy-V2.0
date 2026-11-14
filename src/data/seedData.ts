@@ -9,7 +9,7 @@ export function createInitialSeedData(): BuddyAppData {
     profile: {
       id: 'child-minh-anh',
       displayName: 'Minh Anh',
-      nickname: 'Bé Minh Anh',
+      nickname: 'Minh Anh',
       ageGroup: '6-8',
       ageYears: 8,
       avatarColor: '#EAF3FF',
@@ -327,7 +327,7 @@ export function createInitialSeedData(): BuddyAppData {
           dayLabel: 'Thứ Hai',
           subjects: ['Chào cờ', 'Tiếng Việt', 'Toán', 'Đạo đức'],
           supplies: ['Sách Tiếng Việt', 'Sách Toán', 'Vở ô ly', 'Khăn quàng / Đồng phục chính khóa'],
-          note: 'Đầu tuần mặc đồng phục chỉnh tề nhé con!',
+          note: 'Đầu tuần bạn nhớ mặc đồng phục chỉnh tề nhé!',
         },
         {
           dayOfWeek: 2,
@@ -348,7 +348,7 @@ export function createInitialSeedData(): BuddyAppData {
           dayLabel: 'Thứ Năm',
           subjects: ['Toán', 'Tiếng Anh', 'Tin học', 'Thể dục'],
           supplies: ['Sách Toán', 'Sách Tiếng Anh', 'Đồng phục Thể dục', 'Giày thể thao & Bình nước'],
-          note: 'Thứ Năm có tiết Thể dục, con nhớ chuẩn bị giày thể thao nhé!',
+          note: 'Thứ Năm có tiết Thể dục, bạn nhớ chuẩn bị giày thể thao nhé!',
         },
         {
           dayOfWeek: 5,
@@ -447,7 +447,7 @@ export function createInitialSeedData(): BuddyAppData {
         sourceId: 'task-backpack',
         idempotencyKey: `task_completion:task-backpack:${monthKey}-01`,
         title: 'Hoàn thành Chuẩn bị cặp sách',
-        note: 'Con tự xếp sách vở theo thời khóa biểu',
+        note: 'Mình tự xếp sách vở theo thời khóa biểu',
         createdAt: `${monthKey}-01T19:50:00.000Z`,
       },
       {
@@ -472,8 +472,8 @@ export function createInitialSeedData(): BuddyAppData {
         sourceType: 'parent_encouragement',
         sourceId: 'parent-praise-1',
         idempotencyKey: `parent_encouragement:parent-praise-1:${monthKey}-02`,
-        title: 'Ba mẹ khen con lễ phép & biết giúp đỡ',
-        note: 'Con tự giác lấy nước mời ông bà',
+        title: 'Ba mẹ khen bạn lễ phép & biết giúp đỡ',
+        note: 'Tự giác lấy nước mời ông bà',
         createdAt: `${monthKey}-02T20:00:00.000Z`,
       },
       {
@@ -542,7 +542,7 @@ export function createInitialSeedData(): BuddyAppData {
       {
         id: 'reward-book',
         title: 'Chọn & đọc 1 cuốn truyện tranh mới cùng mẹ',
-        description: 'Con được chọn một cuốn sách thiếu nhi yêu thích và đọc cùng ba mẹ tối cuối tuần.',
+        description: 'Bạn được chọn một cuốn sách thiếu nhi yêu thích và đọc cùng ba mẹ tối cuối tuần.',
         iconName: 'BookHeart',
         colorTheme: 'ice',
         approvedByParent: true,
@@ -578,7 +578,7 @@ export function createInitialSeedData(): BuddyAppData {
       {
         id: 'reward-craft',
         title: 'Góc thủ công làm lồng đèn giấy',
-        description: 'Ba mẹ và con cùng cắt dán và trang trí đồ thủ công nhiều màu sắc.',
+        description: 'Cả nhà mình cùng cắt dán và trang trí đồ thủ công nhiều màu sắc.',
         iconName: 'Palette',
         colorTheme: 'ice',
         approvedByParent: true,
@@ -607,7 +607,7 @@ export function createInitialSeedData(): BuddyAppData {
           'Uống dòng nước thấm đẫm lòng hiếu thảo của cháu, chú chim bỗng hóa lại thành người bà hiền từ. Từ hôm đó, Tích Chu luôn biết yêu thương, lễ phép và tự giác giúp đỡ bà mỗi ngày.',
         ],
         moralLesson: 'Tình yêu thương của ông bà, cha mẹ là món quà quý giá nhất. Chúng mình hãy luôn quan tâm và giúp đỡ người thân từ những việc nhỏ mỗi ngày.',
-        reflectionQuestion: 'Theo con, ngày mai Minh Anh có thể làm một việc nhỏ gì để ba mẹ hoặc ông bà thấy vui lòng nhỉ?',
+        reflectionQuestion: 'Theo bạn, ngày mai mình có thể làm một việc nhỏ gì để ba mẹ hoặc ông bà thấy vui lòng nhỉ?',
         reflectionSuggestions: [
           'Rót một cốc nước ấm mời ông bà và ba mẹ',
           'Tự giác chuẩn bị cặp sách không đợi nhắc',
@@ -633,8 +633,8 @@ export function createInitialSeedData(): BuddyAppData {
           'Cứ năm bước chân đều đặn, Kiến Nâu lại đặt hạt gạo xuống hít thở, rồi tiếp tục tiến lên. Chẳng mấy chốc, chú đã lên tới đỉnh dốc trong tiếng reo hò cổ vũ của cả đàn kiến.',
           'Khi hạt gạo thơm được cất gọn vào kho dự trữ mùa đông, Kiến Nâu hiểu ra rằng: việc lớn đến mấy, chỉ cần chia thành từng bước nhỏ và kiên trì làm tới cùng thì nhất định sẽ thành công.',
         ],
-        moralLesson: 'Khi gặp bài học khó hay nhiệm vụ nhiều bước, con chỉ cần bình tĩnh thực hiện từng bước một như chú Kiến Nâu nhé.',
-        reflectionQuestion: 'Lúc gặp một việc hơi khó, con thường làm gì để mình không bị nản lòng?',
+        moralLesson: 'Khi gặp bài học khó hay nhiệm vụ nhiều bước, bạn chỉ cần bình tĩnh thực hiện từng bước một như chú Kiến Nâu nhé.',
+        reflectionQuestion: 'Lúc gặp một việc hơi khó, bạn thường làm gì để mình không bị nản lòng nhỉ?',
         reflectionSuggestions: [
           'Chia việc thành từng bước nhỏ giống Buddy hướng dẫn',
           'Hít thở sâu và thử làm lại từ từ',
@@ -659,11 +659,11 @@ export function createInitialSeedData(): BuddyAppData {
           'Hai tuần trôi qua, từ mặt đất nâu nhú lên hai chiếc lá mầm xanh biếc, rồi thân cây vươn cao đón ánh mặt trời. Đến cuối tháng, một bông hoa hướng dương vàng tươi như ông mặt trời nhỏ đã nở rộ.',
           'An ngắm bông hoa rực rỡ và ôm chầm lấy mẹ. Cô bé nhận ra rằng cũng giống như mầm cây nhờ nắng và nước mới nở hoa, chính mình mỗi ngày lớn khôn là nhờ biết bao yêu thương, chăm sóc của ba mẹ và thầy cô.',
         ],
-        moralLesson: 'Lời cảm ơn chân thành và sự trân trọng những điều bình dị quanh mình sẽ làm mỗi ngày của con thêm ấm áp.',
-        reflectionQuestion: 'Hôm nay có điều gì vui hoặc ai đó đã giúp con mà con muốn gửi lời cảm ơn không?',
+        moralLesson: 'Lời cảm ơn chân thành và sự trân trọng những điều bình dị quanh mình sẽ làm mỗi ngày của bạn thêm ấm áp.',
+        reflectionQuestion: 'Hôm nay có điều gì vui hoặc ai đó đã giúp bạn mà bạn muốn gửi lời cảm ơn không?',
         reflectionSuggestions: [
           'Cảm ơn mẹ đã nấu bữa cơm ngon',
-          'Cảm ơn ba đã dạy con học điều mới',
+          'Cảm ơn ba đã dạy mình học điều mới',
           'Cảm ơn bản thân vì hôm nay đã cố gắng',
         ],
       },
@@ -686,11 +686,11 @@ export function createInitialSeedData(): BuddyAppData {
           'Nhờ lời nói trung thực của Khôi và sự rộng lượng sẻ chia của Lam, chiều hôm ấy cả hai bức tranh đều có bầu trời xanh biếc đẹp nhất lớp.',
         ],
         moralLesson: 'Sự trung thực và lòng tốt biết sẻ chia luôn giúp tình bạn thêm gắn bó và đáng quý.',
-        reflectionQuestion: 'Nếu lỡ tay làm hỏng một món đồ, theo con nói thật ngay với ba mẹ hay bạn bè sẽ giúp mình cảm thấy thế nào?',
+        reflectionQuestion: 'Nếu lỡ tay làm hỏng một món đồ, theo bạn nói thật ngay với ba mẹ hay bạn bè sẽ giúp mình cảm thấy thế nào?',
         reflectionSuggestions: [
           'Trong lòng thấy nhẹ nhõm và thoải mái hơn',
           'Được ba mẹ hoặc bạn bè cùng tìm cách sửa lại',
-          'Trở thành em bé dũng cảm và đáng tin cậy',
+          'Trở thành người bạn nhỏ dũng cảm và đáng tin cậy',
         ],
       },
       {
@@ -707,12 +707,12 @@ export function createInitialSeedData(): BuddyAppData {
         sourceType: 'builtin',
         paragraphs: [
           'Khi màn đêm buông xuống và ánh đèn trong phòng dịu lại, bầu trời ngoài khung cửa sổ hiện ra như một tấm chăn nhung xanh thẫm điểm hàng ngàn ngôi sao lấp lánh.',
-          'Có bao giờ con tự hỏi vì sao các ngôi sao ở rất xa lại nhấp nháy như đang chớp mắt chào con không? Đó là vì ánh sáng từ các ngôi sao phải đi qua bầu khí quyển mát lành bao quanh Trái Đất của chúng mình đấy.',
+          'Có bao giờ bạn tự hỏi vì sao các ngôi sao ở rất xa lại nhấp nháy như đang chớp mắt chào bạn không? Đó là vì ánh sáng từ các ngôi sao phải đi qua bầu khí quyển mát lành bao quanh Trái Đất của chúng mình đấy.',
           'Khi những làn gió nhẹ trên cao chuyển động, ánh sáng ngôi sao khẽ rung rinh, tạo nên vũ điệu lấp lánh dịu êm trên bầu trời đêm.',
           'Các vì sao vẫn tỏa sáng hiền hòa canh giấc ngủ cho muôn loài, cho cây cối nghỉ ngơi và cho các bạn nhỏ nạp đầy năng lượng để sáng mai thức dậy cao lớn, thông minh hơn.',
         ],
-        moralLesson: 'Giấc ngủ đúng giờ vào buổi tối là lúc cơ thể và trí não của con lớn lên khỏe mạnh nhất.',
-        reflectionQuestion: 'Trước khi nhắm mắt ngủ ngon tối nay, con muốn gửi lời chúc ngủ ngon tới những ai nào?',
+        moralLesson: 'Giấc ngủ đúng giờ vào buổi tối là lúc cơ thể và trí não của bạn lớn lên khỏe mạnh nhất.',
+        reflectionQuestion: 'Trước khi nhắm mắt ngủ ngon tối nay, bạn muốn gửi lời chúc ngủ ngon tới những ai nào?',
         reflectionSuggestions: [
           'Chúc ba mẹ và cả nhà ngủ thật ngon',
           'Chúc bạn Buddy và các ngôi sao ngủ ngon',
@@ -827,22 +827,22 @@ export function createInitialSeedData(): BuddyAppData {
             typeLabel: 'Khám phá',
             title: 'Chiếc cốc nước bị đổ trên bàn',
             promptOrStory:
-              'Lúc với tay lấy hộp bút màu, bạn Nam vô tình làm đổ cốc nước ra góc bàn học làm ướt quyển truyện của chị. Không có ai ở trong phòng lúc đó cả.',
+              'Bạn nhỏ vô tình làm đổ cốc nước và quyết định nói thật với mẹ.',
             buddyWarmFeedback:
-              'Những lúc không có ai nhìn thấy lại chính là lúc chúng mình học được cách lắng nghe tiếng nói chân thật trong lòng.',
+              'Nếu bạn làm đổ cốc nước, bạn sẽ nói gì với mẹ nhỉ? Khi mình dũng cảm nói thật, lòng mình sẽ nhẹ nhõm và ấm áp lắm đó!',
             status: 'not_explored',
           },
           {
             id: 'exp-honesty-2',
             type: 'understand',
             typeLabel: 'Hiểu',
-            title: 'Nếu là bạn Nam, bạn sẽ chọn cách nào?',
+            title: 'Nếu bạn làm đổ cốc nước, bạn sẽ nói gì với mẹ nhỉ?',
             promptOrStory:
-              'Theo bạn, hành động nào sẽ giúp bạn Nam vừa sửa được sự cố vừa thấy nhẹ nhõm trong lòng?',
+              'Bạn nhỏ vô tình làm đổ cốc nước và quyết định nói thật với mẹ. Nếu bạn làm đổ cốc nước, bạn sẽ nói gì với mẹ nhỉ?',
             choices: [
-              'Lấy khăn khô lau bàn ngay rồi thành thật nói với chị để cùng hong khô quyển truyện',
-              'Nhờ mẹ hướng dẫn cách lau khô trang giấy bị ướt và nhận lỗi với chị',
-              'Nói thật ngay từ đầu vì người thân luôn thương và giúp mình sửa sai',
+              'Mình nói thật với mẹ ngay và cùng mẹ lấy khăn khô lau sạch bàn',
+              'Mình nhận lỗi với mẹ và cẩn thận hơn khi để cốc nước trên bàn học',
+              'Mình nói thật ngay từ đầu vì mẹ luôn yêu thương và hướng dẫn mình sửa sai',
             ],
             buddyWarmFeedback:
               'Đúng rồi đó bạn! Khi mình thành thật nhận lỗi và tìm cách khắc phục, mọi người sẽ càng tin tưởng và yêu quý bạn hơn.',
@@ -1198,9 +1198,9 @@ export function createInitialSeedData(): BuddyAppData {
             type: 'understand',
             title: 'Sự tử tế bắt đầu từ đâu?',
             promptOrStory:
-              'Theo bạn, những điều nhỏ bé nào dưới đây đều là sự tử tế đáng quý?',
+              'Theo bạn, những cử chỉ nhỏ nào dưới đây đều là sự tử tế đáng quý?',
             choices: [
-              'Nói lời động viên dịu dàng khi thấy bạn hoặc em nhỏ đang buồn',
+              'Nói lời động viên dịu dàng khi thấy bạn bè xung quanh đang buồn',
               'Giữ cửa hoặc nhặt giúp đồ bị rơi cho người xung quanh',
               'Biết lắng nghe và tôn trọng bạn bè khi chơi chung',
             ],
@@ -1320,7 +1320,7 @@ export function createInitialSeedData(): BuddyAppData {
         experienceType: 'explore',
         experienceTitle: 'Bữa cơm tối thơm lừng của mẹ',
         status: 'experienced',
-        childReflection: 'Con đã nghe tình huống cùng Buddy',
+        childReflection: 'Mình đã nghe tình huống cùng Buddy',
         buddyFeedback:
           'Nhận ra sự vất vả và tình thương của ba mẹ trong từng bữa ăn chính là khởi đầu đẹp nhất của lòng biết ơn đó bạn!',
         dateKey: `${monthKey}-02`,

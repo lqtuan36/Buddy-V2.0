@@ -88,7 +88,7 @@ export const STORYBOOK_TASK_CELEBRATION_IMAGES: Record<ChildCharacterVariant, st
 export const ACTION_SCENE_REGISTRY: Record<IllustrationKey, ActionSceneAsset> = {
   'schedule-check': {
     key: 'schedule-check',
-    actionCaption: 'Bé xem thời khóa biểu ngày mai trên bàn học',
+    actionCaption: 'Bạn nhỏ xem thời khóa biểu ngày mai trên bàn học',
     helpCallout: 'Nhìn cột Thứ của ngày mai để biết các môn học cần chuẩn bị',
     objectFocusTag: 'Bảng thời khóa biểu · Cột ngày mai',
     bgGradient: 'from-[#FFF8EB] via-[#EAF3FF] to-[#EDE7FF]',
@@ -99,7 +99,7 @@ export const ACTION_SCENE_REGISTRY: Record<IllustrationKey, ActionSceneAsset> = 
   },
   'take-books': {
     key: 'take-books',
-    actionCaption: 'Bé lấy sách giáo khoa và vở bài tập theo môn học',
+    actionCaption: 'Bạn nhỏ lấy sách giáo khoa và vở bài tập theo môn học',
     helpCallout: 'Mỗi môn học lấy 1 quyển sách và 1 quyển vở đặt ngay ngắn ra bàn',
     objectFocusTag: 'Sách giáo khoa · Vở bài tập từng môn',
     bgGradient: 'from-[#FFF6E5] via-[#FFF0C9] to-[#EAF3FF]',
@@ -110,7 +110,7 @@ export const ACTION_SCENE_REGISTRY: Record<IllustrationKey, ActionSceneAsset> = 
   },
   'pack-books': {
     key: 'pack-books',
-    actionCaption: 'Bé xếp sách to phía sau, vở nhỏ phía trước vào balo',
+    actionCaption: 'Bạn nhỏ xếp sách to phía sau, vở nhỏ phía trước vào balo',
     helpCallout: 'Quyển to đặt sát lưng cặp, quyển nhỏ đặt phía ngoài cho thẳng góc',
     objectFocusTag: 'Balo mở · Sách Toán & Tiếng Việt',
     bgGradient: 'from-[#FFF8EC] via-[#EAF3FF] to-[#DDF5E8]',
@@ -121,7 +121,7 @@ export const ACTION_SCENE_REGISTRY: Record<IllustrationKey, ActionSceneAsset> = 
   },
   'pencil-case': {
     key: 'pencil-case',
-    actionCaption: 'Bé kiểm tra hộp bút đủ bút chì, thước kẻ và tẩy',
+    actionCaption: 'Bạn nhỏ kiểm tra hộp bút đủ bút chì, thước kẻ và tẩy',
     helpCallout: 'Đếm đủ: 2 bút chì + 1 thước kẻ + 1 cục tẩy trắng rồi đặt vào ngăn phụ',
     objectFocusTag: 'Hộp bút · Bút chì · Thước · Tẩy',
     bgGradient: 'from-[#FFF5E0] via-[#FFF0C9] to-[#FFE4D8]',
@@ -132,7 +132,7 @@ export const ACTION_SCENE_REGISTRY: Record<IllustrationKey, ActionSceneAsset> = 
   },
   'water-bottle': {
     key: 'water-bottle',
-    actionCaption: 'Bé kéo khóa balo và đặt cặp ở vị trí phù hợp cạnh bàn học',
+    actionCaption: 'Bạn nhỏ kéo khóa balo và đặt cặp ở vị trí phù hợp cạnh bàn học',
     helpCallout: 'Kéo kín khóa balo và đặt ngay ngắn lên ghế gỗ cạnh bàn học cho sáng mai',
     objectFocusTag: 'Balo gọn gàng · Vị trí cạnh bàn học',
     bgGradient: 'from-[#FFF8EB] via-[#EAF3FF] to-[#FFF0C9]',
@@ -143,7 +143,7 @@ export const ACTION_SCENE_REGISTRY: Record<IllustrationKey, ActionSceneAsset> = 
   },
   'pen-holder': {
     key: 'pen-holder',
-    actionCaption: 'Bé gom bút chì và bút màu cắm gọn vào ống đựng bút',
+    actionCaption: 'Bạn nhỏ gom bút chì và bút màu cắm gọn vào ống đựng bút',
     helpCallout: 'Quay đầu bút gọn gàng và đặt ống bút ở góc phải bàn học',
     objectFocusTag: 'Ống đựng bút · Bút màu gọn gàng',
     bgGradient: 'from-[#FFF8EB] via-[#DDF5E8] to-[#EAF3FF]',
@@ -154,7 +154,7 @@ export const ACTION_SCENE_REGISTRY: Record<IllustrationKey, ActionSceneAsset> = 
   },
   'tidy-desk': {
     key: 'tidy-desk',
-    actionCaption: 'Bé sắp xếp góc học tập sáng sủa, ngăn nắp',
+    actionCaption: 'Bạn nhỏ sắp xếp góc học tập sáng sủa, ngăn nắp',
     helpCallout: 'Đèn học bên trái, kệ sách và ống bút đặt sát góc bàn',
     objectFocusTag: 'Bàn học sạch thoáng · Đèn học ấm áp',
     bgGradient: 'from-[#FFF8EB] via-[#DDF5E8] to-[#FFF0C9]',
@@ -165,7 +165,7 @@ export const ACTION_SCENE_REGISTRY: Record<IllustrationKey, ActionSceneAsset> = 
   },
   'sort-books': {
     key: 'sort-books',
-    actionCaption: 'Bé xếp sách và truyện đứng thẳng hàng trên kệ gỗ',
+    actionCaption: 'Bạn nhỏ xếp sách và truyện đứng thẳng hàng trên kệ gỗ',
     helpCallout: 'Xoay phần gáy sách ra ngoài để dễ nhìn tên từng quyển',
     objectFocusTag: 'Giá sách gỗ · Gáy sách thẳng hàng',
     bgGradient: 'from-[#FFF8EB] via-[#EDE7FF] to-[#EAF3FF]',
@@ -176,7 +176,7 @@ export const ACTION_SCENE_REGISTRY: Record<IllustrationKey, ActionSceneAsset> = 
   },
   'wipe-table': {
     key: 'wipe-table',
-    actionCaption: 'Bé dùng khăn mềm lau sạch bụi trên mặt bàn học',
+    actionCaption: 'Bạn nhỏ dùng khăn mềm lau sạch bụi trên mặt bàn học',
     helpCallout: 'Lau nhẹ nhàng từ trái sang phải cho mặt bàn gỗ sáng bóng',
     objectFocusTag: 'Khăn mềm · Mặt bàn sạch bóng',
     bgGradient: 'from-[#FFF8EB] via-[#DDF5E8] to-[#FFF0C9]',
@@ -187,7 +187,7 @@ export const ACTION_SCENE_REGISTRY: Record<IllustrationKey, ActionSceneAsset> = 
   },
   'building-blocks': {
     key: 'building-blocks',
-    actionCaption: 'Bé nhặt các khối xếp hình trên sàn bỏ vào hộp',
+    actionCaption: 'Bạn nhỏ nhặt các khối xếp hình trên sàn bỏ vào hộp',
     helpCallout: 'Nhặt các mảnh nhỏ trên sàn trước để đi lại an toàn',
     objectFocusTag: 'Khối gỗ & Lego · Hộp đựng',
     bgGradient: 'from-[#FFF8EB] via-[#FFF0C9] to-[#FFE4D8]',
@@ -198,7 +198,7 @@ export const ACTION_SCENE_REGISTRY: Record<IllustrationKey, ActionSceneAsset> = 
   },
   'toy-box': {
     key: 'toy-box',
-    actionCaption: 'Bé đẩy giỏ đồ chơi gọn gàng về sát góc phòng',
+    actionCaption: 'Bạn nhỏ đẩy giỏ đồ chơi gọn gàng về sát góc phòng',
     helpCallout: 'Đặt giỏ đồ chơi sát tường để lối đi trong phòng rộng rãi',
     objectFocusTag: 'Giỏ đồ chơi lớn · Góc phòng gọn',
     bgGradient: 'from-[#FFF8EB] via-[#FFE4D8] to-[#FFF0C9]',
@@ -209,7 +209,7 @@ export const ACTION_SCENE_REGISTRY: Record<IllustrationKey, ActionSceneAsset> = 
   },
   'plush-friends': {
     key: 'plush-friends',
-    actionCaption: 'Bé ôm gấu bông đặt ngồi ngay ngắn trên kệ',
+    actionCaption: 'Bạn nhỏ ôm gấu bông đặt ngồi ngay ngắn trên kệ',
     helpCallout: 'Xếp các bạn thú bông tựa lưng vào kệ thật êm ái',
     objectFocusTag: 'Gấu bông · Kệ đồ chơi',
     bgGradient: 'from-[#FFF8EB] via-[#FFE4D8] to-[#EDE7FF]',
@@ -220,7 +220,7 @@ export const ACTION_SCENE_REGISTRY: Record<IllustrationKey, ActionSceneAsset> = 
   },
   'soap-bubbles': {
     key: 'soap-bubbles',
-    actionCaption: 'Bé làm ướt tay và nhấn lấy bọt xà phòng thơm',
+    actionCaption: 'Bạn nhỏ làm ướt tay và nhấn lấy bọt xà phòng thơm',
     helpCallout: 'Chỉ cần nhấn 1 giọt xà phòng nhỏ rồi xoa đều hai tay',
     objectFocusTag: 'Chai xà phòng · Bọt mịn thơm',
     bgGradient: 'from-[#FFF8EB] via-[#EAF3FF] to-[#EDE7FF]',
@@ -231,7 +231,7 @@ export const ACTION_SCENE_REGISTRY: Record<IllustrationKey, ActionSceneAsset> = 
   },
   'wash-hands': {
     key: 'wash-hands',
-    actionCaption: 'Bé chà kỹ lòng bàn tay và kẽ ngón tay dưới vòi nước',
+    actionCaption: 'Bạn nhỏ chà kỹ lòng bàn tay và kẽ ngón tay dưới vòi nước',
     helpCallout: 'Đan các ngón tay vào nhau và đếm chậm từ 1 tới 20',
     objectFocusTag: 'Vòi nước mát · Đôi bàn tay sạch',
     bgGradient: 'from-[#FFF8EB] via-[#EAF3FF] to-[#DDF5E8]',
@@ -242,7 +242,7 @@ export const ACTION_SCENE_REGISTRY: Record<IllustrationKey, ActionSceneAsset> = 
   },
   'clean-towel': {
     key: 'clean-towel',
-    actionCaption: 'Bé khóa vòi nước và lau khô tay bằng khăn bông mềm',
+    actionCaption: 'Bạn nhỏ khóa vòi nước và lau khô tay bằng khăn bông mềm',
     helpCallout: 'Khóa vòi nước trước rồi thấm khô cả lòng và mu bàn tay',
     objectFocusTag: 'Khăn bông khô · Vòi nước đã khóa',
     bgGradient: 'from-[#FFF8EB] via-[#FFF0C9] to-[#DDF5E8]',
@@ -253,7 +253,7 @@ export const ACTION_SCENE_REGISTRY: Record<IllustrationKey, ActionSceneAsset> = 
   },
   'clothes-ready': {
     key: 'clothes-ready',
-    actionCaption: 'Bé chọn và xếp phẳng bộ đồng phục đi học cho sáng mai',
+    actionCaption: 'Bạn nhỏ chọn và xếp phẳng bộ đồng phục đi học cho sáng mai',
     helpCallout: 'Treo hoặc gấp sẵn áo và quần đồng phục ở nơi dễ lấy nhất',
     objectFocusTag: 'Bộ đồng phục · Móc treo gọn',
     bgGradient: 'from-[#FFF8EB] via-[#EDE7FF] to-[#FFF0C9]',
@@ -264,7 +264,7 @@ export const ACTION_SCENE_REGISTRY: Record<IllustrationKey, ActionSceneAsset> = 
   },
   'shoes-hat': {
     key: 'shoes-hat',
-    actionCaption: 'Bé đặt đôi tất sạch cạnh giày và mũ đội đầu',
+    actionCaption: 'Bạn nhỏ đặt đôi tất sạch cạnh giày và mũ đội đầu',
     helpCallout: 'Đặt đôi tất ngay bên trong hoặc cạnh đôi giày đi học',
     objectFocusTag: 'Giày thể thao · Tất sạch · Mũ',
     bgGradient: 'from-[#FFF8EB] via-[#FFF0C9] to-[#FFE4D8]',
@@ -275,7 +275,7 @@ export const ACTION_SCENE_REGISTRY: Record<IllustrationKey, ActionSceneAsset> = 
   },
   'check-list': {
     key: 'check-list',
-    actionCaption: 'Bé điểm danh đủ 3 món: Cặp sách, bình nước và quần áo',
+    actionCaption: 'Bạn nhỏ điểm danh đủ 3 món: Cặp sách, bình nước và quần áo',
     helpCallout: 'Nhìn lại 3 món: Cặp sách + Bình nước + Quần áo ngày mai',
     objectFocusTag: 'Bảng điểm danh 3 món sẵn sàng 100%',
     bgGradient: 'from-[#FFF8EB] via-[#DDF5E8] to-[#FFF0C9]',
@@ -299,19 +299,19 @@ export const MISSING_STORYBOOK_ASSETS_MANIFEST: Array<{
   {
     key: 'wipe-table',
     taskTitle: 'Dọn góc học tập',
-    stepDescription: 'Bé dùng khăn mềm lau sạch mặt bàn học dưới nắng ấm (hiện dùng chung tranh góc học tập)',
+    stepDescription: 'Bạn nhỏ dùng khăn mềm lau sạch mặt bàn học dưới nắng ấm (hiện dùng chung tranh góc học tập)',
     recommendedFilename: 'storybook_step_wipe_table.webp',
   },
   {
     key: 'plush-friends',
     taskTitle: 'Cất đồ chơi gọn gàng',
-    stepDescription: 'Cận cảnh bé ôm gấu bông đặt ngay ngắn lên kệ đồ chơi (hiện dùng chung tranh cất đồ chơi)',
+    stepDescription: 'Cận cảnh bạn nhỏ ôm gấu bông đặt ngay ngắn lên kệ đồ chơi (hiện dùng chung tranh cất đồ chơi)',
     recommendedFilename: 'storybook_step_plush_friends.webp',
   },
   {
     key: 'clean-towel',
     taskTitle: 'Rửa tay sạch sẽ',
-    stepDescription: 'Cận cảnh bé khóa vòi nước và lau khô tay bằng khăn bông màu vàng ấm (hiện dùng chung tranh rửa tay)',
+    stepDescription: 'Cận cảnh bạn nhỏ khóa vòi nước và lau khô tay bằng khăn bông màu vàng ấm (hiện dùng chung tranh rửa tay)',
     recommendedFilename: 'storybook_step_clean_towel.webp',
   },
 ];
@@ -969,8 +969,8 @@ export const TaskCelebrationIllustration: React.FC<{
           src={celebrationSrc}
           alt={
             activeVariant === 'boy'
-              ? 'Tranh Warm Storybook bé trai vui mừng hoàn thành nhiệm vụ cùng Buddy'
-              : 'Tranh Warm Storybook bé gái vui mừng hoàn thành nhiệm vụ cùng Buddy'
+              ? 'Tranh Warm Storybook bạn nhỏ vui mừng hoàn thành nhiệm vụ cùng Buddy'
+              : 'Tranh Warm Storybook bạn nhỏ vui mừng hoàn thành nhiệm vụ cùng Buddy'
           }
           loading="eager"
           decoding="async"
@@ -1032,7 +1032,7 @@ export const GrowthJourneyBannerIllustration: React.FC<{
       {!imgError ? (
         <img
           src={GROWTH_JOURNEY_MAP_IMAGE}
-          alt="Bản đồ Hành trình của con"
+          alt="Bản đồ Hành trình của mình"
           loading="lazy"
           decoding="async"
           referrerPolicy="no-referrer"
@@ -1040,7 +1040,7 @@ export const GrowthJourneyBannerIllustration: React.FC<{
           className="w-full h-full object-cover"
         />
       ) : (
-        <svg viewBox="0 0 400 200" className="w-full h-full" role="img" aria-label="Hành trình của con">
+        <svg viewBox="0 0 400 200" className="w-full h-full" role="img" aria-label="Hành trình của mình">
           <circle cx="330" cy="48" r="28" fill="#FFD54F" />
           <path d="M 0 150 Q 120 90 240 140 T 400 120 L 400 200 L 0 200 Z" fill="#A7F3D0" />
           <path
@@ -1059,7 +1059,7 @@ export const GrowthJourneyBannerIllustration: React.FC<{
 };
 
 /**
- * Registry of dedicated Warm Storybook illustrations for all 8 virtues in Hành trình của con.
+ * Registry of dedicated Warm Storybook illustrations for all 8 virtues in Hành trình của mình.
  * Every virtue has a unique child-action scene painting (no shared or duplicate images).
  */
 export const VIRTUE_STORYBOOK_SCENE_REGISTRY: Record<
@@ -1072,42 +1072,42 @@ export const VIRTUE_STORYBOOK_SCENE_REGISTRY: Record<
 > = {
   gratitude: {
     imageUrl: '/src/assets/images/virtue_gratitude_storybook_1794460710601.jpg',
-    actionCaption: 'Em bé lễ phép dâng tách trà ấm và nói lời cảm ơn bà cùng mẹ',
+    actionCaption: 'Bạn nhỏ lễ phép mời tách trà ấm và nói lời cảm ơn bà cùng mẹ.',
     bgGradient: 'from-[#FFF0C9] to-[#FFE4D8]',
   },
   honesty: {
     imageUrl: '/src/assets/images/virtue_honesty_storybook_1794460711759.jpg',
-    actionCaption: 'Em bé dũng cảm nói thật với mẹ khi lỡ làm đổ cốc nước trên bàn',
+    actionCaption: 'Bạn nhỏ vô tình làm đổ cốc nước và quyết định nói thật với mẹ.',
     bgGradient: 'from-[#EAF3FF] to-[#DDF5E8]',
   },
   courage: {
     imageUrl: '/src/assets/images/virtue_courage_storybook_1794460713117.jpg',
-    actionCaption: 'Em bé tự tin bước qua đường đá nhỏ trong công viên cùng Buddy cổ vũ',
+    actionCaption: 'Bạn nhỏ tự tin bước qua đường đá nhỏ trong công viên cùng Buddy cổ vũ.',
     bgGradient: 'from-[#FFE4D8] to-[#FFF0C9]',
   },
   sharing: {
     imageUrl: '/src/assets/images/virtue_sharing_storybook_1794460714086.jpg',
-    actionCaption: 'Hai bạn nhỏ vui vẻ chia sẻ hộp bút màu và cùng vẽ tranh',
+    actionCaption: 'Hai bạn nhỏ vui vẻ chia sẻ hộp bút màu và cùng vẽ tranh.',
     bgGradient: 'from-[#DDF5E8] to-[#EAF3FF]',
   },
   responsibility: {
     imageUrl: '/src/assets/images/virtue_responsibility_storybook_1794460715451.jpg',
-    actionCaption: 'Em bé chủ động tưới chậu hoa hướng dương và xếp cặp sách gọn gàng',
+    actionCaption: 'Bạn nhỏ chủ động tưới chậu hoa hướng dương và xếp cặp sách gọn gàng.',
     bgGradient: 'from-[#EAF3FF] to-[#EDE7FF]',
   },
   perseverance: {
     imageUrl: '/src/assets/images/virtue_perseverance_storybook_1794460716219.jpg',
-    actionCaption: 'Em bé kiên nhẫn xếp từng khối gỗ cao đến ngôi sao trên đỉnh',
+    actionCaption: 'Bạn nhỏ kiên nhẫn xếp từng khối gỗ cao đến ngôi sao trên đỉnh.',
     bgGradient: 'from-[#EDE7FF] to-[#FFF0C9]',
   },
   kindness: {
     imageUrl: '/src/assets/images/virtue_kindness_storybook_1794460828167.jpg',
-    actionCaption: 'Em bé che ô và phụ xách giỏ trái cây giúp bà cụ hàng xóm',
+    actionCaption: 'Bạn nhỏ che ô và phụ xách giỏ trái cây giúp bà cụ hàng xóm.',
     bgGradient: 'from-[#FFE4D8] to-[#EDE7FF]',
   },
   independence: {
     imageUrl: '/src/assets/images/virtue_independence_storybook_1794460831008.jpg',
-    actionCaption: 'Em bé tự giác buộc dây giày và mặc đồng phục gọn gàng buổi sáng',
+    actionCaption: 'Bạn nhỏ tự giác buộc dây giày và mặc đồng phục gọn gàng buổi sáng.',
     bgGradient: 'from-[#DDF5E8] to-[#FFF0C9]',
   },
 };
@@ -1407,22 +1407,22 @@ export const STORY_STORYBOOK_COVER_REGISTRY: Record<
     paragraphScenes: [
       {
         imageUrl: '/src/assets/images/story_bau_troi_dem_storybook_1794460837850.jpg',
-        sceneCaption: 'Ánh trăng lưỡi liềm và những vì sao dịu dàng ru con vào giấc ngủ',
+        sceneCaption: 'Ánh trăng lưỡi liềm và những vì sao dịu dàng tỏa sáng trong đêm êm dịu',
         isDedicatedSceneArtwork: true,
       },
       {
         imageUrl: '/src/assets/images/storybook_prepare_clothes_scene_1794417035702.jpg',
-        sceneCaption: 'Căn phòng nhỏ gọn gàng, ấm áp sau một ngày con chăm ngoan',
+        sceneCaption: 'Căn phòng nhỏ gọn gàng, ấm áp sau một ngày vui học và khám phá',
         isDedicatedSceneArtwork: false,
       },
       {
         imageUrl: '/src/assets/images/story_bau_troi_dem_storybook_1794460837850.jpg',
-        sceneCaption: 'Ngôi sao nhỏ mỉm cười lắng nghe ước mơ của bé qua khung cửa sổ',
+        sceneCaption: 'Ngôi sao nhỏ mỉm cười lắng nghe ước mơ của bạn nhỏ qua khung cửa sổ',
         isDedicatedSceneArtwork: true,
       },
       {
         imageUrl: '/src/assets/images/storybook_family_reward_celebration_1794417036395.jpg',
-        sceneCaption: 'Tình yêu thương của Ba Mẹ và Buddy đồng hành trong giấc mơ đẹp',
+        sceneCaption: 'Tình yêu thương của gia đình và Buddy đồng hành trong giấc mơ đẹp',
         isDedicatedSceneArtwork: false,
       },
     ],

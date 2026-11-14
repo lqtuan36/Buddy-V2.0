@@ -302,7 +302,7 @@ function parseVietnameseCurriculumTextToDraftTopics(rawText: string) {
 
     const subtitleLine =
       lines.find((l, i) => i > 0 && !/^(khám phá|hiểu|thực hành|chia sẻ|câu hỏi|hoạt động)/i.test(l)) ||
-      `Cùng con rèn luyện và trải nghiệm ${cleanTitle.toLowerCase()} mỗi ngày`;
+      `Cùng bạn rèn luyện và trải nghiệm ${cleanTitle.toLowerCase()} mỗi ngày`;
 
     const bodyText = lines.slice(1).join(' ');
 
@@ -935,7 +935,7 @@ Nguyên tắc bắt buộc:
         | 'invalid_wav' = 'server_5xx';
       let httpStatus = 502;
       let userReason =
-        'Không thể tạo tệp âm thanh Podcast lúc này. Ba mẹ hoặc bé vui lòng bấm "Thử lại" để tạo lại âm thanh.';
+        'Không thể tạo tệp âm thanh Podcast lúc này. Ba mẹ hoặc bạn vui lòng bấm "Thử lại" để tạo lại âm thanh.';
 
       if (/429|RESOURCE_EXHAUSTED|quota/i.test(detail)) {
         errorCategory = 'quota_429';
@@ -1224,12 +1224,12 @@ Nguyên tắc bắt buộc:
         ok: true,
         draft: {
           title: defaultTitle,
-          summary: `Câu chuyện do ba mẹ tải lên từ tệp "${cleanName}" dành tặng giờ đi ngủ của con.`,
+          summary: `Câu chuyện do ba mẹ tải lên từ tệp "${cleanName}" dành tặng giờ đi ngủ.`,
           paragraphs,
           moralLesson:
-            'Mỗi câu chuyện của ba mẹ đều gửi gắm tình yêu thương và bài học nhẹ nhàng cho con.',
+            'Mỗi câu chuyện của ba mẹ đều gửi gắm tình yêu thương và bài học nhẹ nhàng cho bạn.',
           reflectionQuestion:
-            'Chi tiết nào trong câu chuyện tối nay làm con nhớ nhất?',
+            'Chi tiết nào trong câu chuyện tối nay làm bạn nhớ nhất?',
           durationMinutes: Math.max(3, Math.min(8, paragraphs.length + 1)),
         },
         mode: 'demo-fallback',
@@ -1408,11 +1408,11 @@ ${extractedText.slice(0, 24000)}`,
                   paragraphs: paras,
                   moralLesson: String(
                     ep.moralLesson ||
-                      'Mỗi câu chuyện của ba mẹ đều gửi gắm tình yêu thương và bài học nhẹ nhàng cho con.'
+                      'Mỗi câu chuyện của ba mẹ đều gửi gắm tình yêu thương và bài học nhẹ nhàng cho bạn.'
                   ),
                   reflectionQuestion: String(
                     ep.reflectionQuestion ||
-                      'Chi tiết nào trong tập truyện này làm con thấy ấm áp nhất?'
+                      'Chi tiết nào trong tập truyện này làm bạn thấy ấm áp nhất?'
                   ),
                   illustrationType: ['tich-chu', 'kien-nho', 'hat-giong', 'chim-se', 'bau-troi-dem'][
                     idx % 5
@@ -1599,7 +1599,7 @@ ${extractedText.slice(0, 24000)}`,
         return res.status(409).json({
           ok: false,
           code: 'ALREADY_SPUN_THIS_MONTH',
-          error: 'Tháng này con đã quay thưởng rồi (tối đa 1 lần quay mỗi tháng). Hẹn con tháng sau nhé!',
+          error: 'Tháng này bạn đã quay thưởng rồi (tối đa 1 lần quay mỗi tháng). Hẹn bạn tháng sau nhé!',
         });
       }
 
@@ -1608,7 +1608,7 @@ ${extractedText.slice(0, 24000)}`,
           ok: false,
           code: 'THRESHOLD_NOT_MET',
           remainingStarsNeeded: effectiveThreshold - currentMonthStars,
-          error: `Con cần tích lũy đủ ${effectiveThreshold} sao trong tháng để mở khóa vòng quay (hiện có ${currentMonthStars}/${effectiveThreshold} sao).`,
+          error: `Bạn cần tích lũy đủ ${effectiveThreshold} sao trong tháng để mở khóa vòng quay (hiện có ${currentMonthStars}/${effectiveThreshold} sao).`,
         });
       }
 
@@ -2679,9 +2679,9 @@ function segmentVietnameseTextIntoThreeMinuteEpisodes(
         actualDurationSeconds: estSec,
         paragraphs: finalParas,
         moralLesson:
-          'Mỗi câu chuyện của ba mẹ đều gửi gắm tình yêu thương và bài học nhẹ nhàng cho con trước giờ đi ngủ.',
+          'Mỗi câu chuyện của ba mẹ đều gửi gắm tình yêu thương và bài học nhẹ nhàng cho bạn trước giờ đi ngủ.',
         reflectionQuestion:
-          'Chi tiết nào trong tập Podcast hôm nay làm con cảm thấy ấm áp và đáng nhớ nhất?',
+          'Chi tiết nào trong tập Podcast hôm nay làm bạn cảm thấy ấm áp và đáng nhớ nhất?',
         illustrationType: IllustrationPool[(epNumber - 1) % IllustrationPool.length],
         sourceDocumentInfo: {
           fileName: cleanName,

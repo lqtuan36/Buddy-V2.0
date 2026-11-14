@@ -86,6 +86,10 @@ export class LocalDemoRepository implements IDataRepository {
         profile: {
           ...seed.profile,
           ...(parsed.profile || {}),
+          nickname: (parsed.profile?.nickname || seed.profile.nickname || 'Minh Anh').replace(
+            /^Bé\s+/i,
+            ''
+          ),
           characterVariant:
             parsed.profile?.characterVariant === 'boy' ||
             parsed.profile?.characterVariant === 'girl'
@@ -117,7 +121,20 @@ export class LocalDemoRepository implements IDataRepository {
           weeklyDays:
             Array.isArray(parsed.schoolSchedule?.weeklyDays) &&
             parsed.schoolSchedule!.weeklyDays.length > 0
-              ? parsed.schoolSchedule!.weeklyDays
+              ? parsed.schoolSchedule!.weeklyDays.map((day) => {
+                  const seedDay = seed.schoolSchedule.weeklyDays.find(
+                    (sd) => sd.dayOfWeek === day.dayOfWeek
+                  );
+                  const cleanNote =
+                    day.note === 'Đầu tuần mặc đồng phục chỉnh tề nhé con!' ||
+                    day.note === 'Thứ Năm có tiết Thể dục, con nhớ chuẩn bị giày thể thao nhé!'
+                      ? seedDay?.note || day.note
+                      : day.note;
+                  return {
+                    ...day,
+                    note: cleanNote,
+                  };
+                })
               : seed.schoolSchedule.weeklyDays,
           dateOverrides: Array.isArray(parsed.schoolSchedule?.dateOverrides)
             ? parsed.schoolSchedule!.dateOverrides
@@ -162,11 +179,28 @@ export class LocalDemoRepository implements IDataRepository {
         stories:
           Array.isArray(parsed.stories) && parsed.stories.length > 0
             ? parsed.stories.map((st, idx) => {
+                const seedStory = seed.stories.find((ss) => ss.id === st.id);
+                const isUnmodifiedBuiltin =
+                  st.sourceType === 'builtin' &&
+                  Boolean(seedStory) &&
+                  (st.contentVersion ?? 1) <= 1;
                 const hasOfficialV21VoiceAsset =
                   typeof st.audioAssetId === 'string' &&
                   (st.audioAssetId.includes('_Puck_') || st.audioAssetId.includes('_Zephyr_'));
                 return {
                   ...st,
+                  paragraphs:
+                    isUnmodifiedBuiltin && seedStory ? seedStory.paragraphs : st.paragraphs,
+                  moralLesson:
+                    isUnmodifiedBuiltin && seedStory ? seedStory.moralLesson : st.moralLesson,
+                  reflectionQuestion:
+                    isUnmodifiedBuiltin && seedStory
+                      ? seedStory.reflectionQuestion
+                      : st.reflectionQuestion,
+                  reflectionSuggestions:
+                    isUnmodifiedBuiltin && seedStory
+                      ? seedStory.reflectionSuggestions
+                      : st.reflectionSuggestions,
                   contentVersion: st.contentVersion ?? 1,
                   orderIndex: st.orderIndex ?? idx,
                   approvalStatus:
@@ -192,7 +226,10 @@ export class LocalDemoRepository implements IDataRepository {
               })),
         rewards:
           Array.isArray(parsed.rewards) && parsed.rewards.length > 0
-            ? parsed.rewards
+            ? parsed.rewards.map((rw) => {
+                const seedRw = seed.rewards.find((sr) => sr.id === rw.id);
+                return seedRw ? { ...rw, description: seedRw.description } : rw;
+              })
             : seed.rewards,
         growthTopics:
           Array.isArray(parsed.growthTopics) && parsed.growthTopics.length > 0

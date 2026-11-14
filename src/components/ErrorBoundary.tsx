@@ -65,7 +65,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
             </h1>
 
             <p className="text-sm text-[#23324D]/75 leading-relaxed">
-              Ứng dụng vừa gặp một trục trặc nhỏ khi hiển thị. Con hoặc ba mẹ hãy bấm nút bên dưới để quay về màn hình chính ngay nhé.
+              Ứng dụng vừa gặp một trục trặc nhỏ khi hiển thị. Bạn hoặc ba mẹ hãy bấm nút bên dưới để quay về màn hình chính ngay nhé.
             </p>
 
             {this.state.errorMessage && (

@@ -1115,7 +1115,7 @@ export const BuddyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           sourceType: 'task_completion',
           sourceId: taskId,
           title: `Hoàn thành: ${task.title}`,
-          note: `Con thực hiện đủ ${task.steps.length} bước hướng dẫn cùng Buddy`,
+          note: `Mình thực hiện đủ ${task.steps.length} bước hướng dẫn cùng Buddy`,
           policy: data.pointsPolicy,
           customAmount: task.starReward || data.pointsPolicy.taskCompletionStars,
           dateKey,
@@ -1402,8 +1402,8 @@ export const BuddyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         childId: data.profile.id,
         sourceType: 'parent_encouragement',
         sourceId: `praise-${Date.now()}`,
-        title: reasonTitle.trim() || 'Ba mẹ khen ngợi nỗ lực của con',
-        note: note.trim() || 'Ghi nhận sự cố gắng tích cực của con',
+        title: reasonTitle.trim() || 'Ba mẹ khen ngợi nỗ lực của bạn',
+        note: note.trim() || 'Ghi nhận sự cố gắng tích cực của bạn',
         policy: data.pointsPolicy,
         customAmount: data.pointsPolicy.parentPraiseStars,
       });
@@ -1426,7 +1426,7 @@ export const BuddyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (existingSpin) {
       return {
         ok: false,
-        error: 'Tháng này con đã quay thưởng rồi! Mỗi tháng mình có 1 lượt quay kỷ niệm gia đình nhé.',
+        error: 'Tháng này bạn đã quay thưởng rồi! Mỗi tháng mình có 1 lượt quay kỷ niệm gia đình nhé.',
       };
     }
 
@@ -1434,7 +1434,7 @@ export const BuddyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (!summary.wheelEligible) {
       return {
         ok: false,
-        error: `Con cần tích lũy đủ ${summary.threshold} ngôi sao trong tháng để mở vòng quay (hiện có ${summary.monthlyStars} sao).`,
+        error: `Bạn cần tích lũy đủ ${summary.threshold} ngôi sao trong tháng để mở vòng quay (hiện có ${summary.monthlyStars} sao).`,
       };
     }
 
@@ -2038,7 +2038,7 @@ export const BuddyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         profile: {
           ...data.profile,
           displayName: cleanName,
-          nickname: `Bé ${cleanName}`,
+          nickname: cleanName,
           ageYears: safeAge,
           ageGroup: safeAge <= 8 ? '6-8' : '9-12',
           parentConsentGranted,

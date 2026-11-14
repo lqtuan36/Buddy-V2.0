@@ -1130,7 +1130,7 @@ export const StoryPlayerView: React.FC<{
                 </p>
                 <p className="text-xs text-white/80">
                   {reflectionFeedback ||
-                    'Tập Podcast đã kết thúc êm dịu. Con cùng Buddy trả lời 3 câu hỏi nhỏ bên dưới nhé!'}
+                    'Tập Podcast đã kết thúc êm dịu. Bạn cùng mình trả lời 3 câu hỏi nhỏ bên dưới nhé!'}
                 </p>
               </div>
             </div>
