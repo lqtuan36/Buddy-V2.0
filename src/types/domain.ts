@@ -68,6 +68,8 @@ export interface TaskStep {
   simpleExplanation: string; // Shown & spoken when child taps "Mình chưa hiểu"
   buddyPraise: string; // Supportive response when step is completed
   illustrationKey: IllustrationKey;
+  contentVersion?: number; // System seed content version for selective sync
+  customizedByParent?: boolean; // True only if parent explicitly edited this step's content
 }
 
 export type ApprovalStatus = 'approved' | 'pending_review' | 'draft';
@@ -96,6 +98,9 @@ export interface Task {
   approvalStatus: ApprovalStatus;
   lastApprovedAt: string;
   steps: TaskStep[];
+  sourceType?: 'builtin' | 'custom'; // Distinguishes system-provided default tasks from parent-created tasks
+  contentVersion?: number; // System seed content version for selective updates
+  customizedByParent?: boolean; // True only if parent explicitly edited task content
 }
 
 export type RoutinePeriod = 'morning' | 'after_school' | 'evening';
@@ -141,6 +146,8 @@ export interface SchoolScheduleConfig {
   weeklyDays: SchoolDaySchedule[];
   dateOverrides: SchoolScheduleOverride[];
   updatedAt: string;
+  contentVersion?: number;
+  customizedByParent?: boolean;
 }
 
 export interface TaskRun {
@@ -275,6 +282,7 @@ export interface Story {
   voiceVersion?: string;
   baseSpeed?: number;
   contentVersion?: number;
+  customizedByParent?: boolean;
   sceneTimeline?: StorySceneCue[];
   paragraphSceneImages?: Array<{ imageUrl?: string; caption?: string }>;
   sourceDocumentInfo?: StorySourceDocumentInfo;
@@ -357,6 +365,8 @@ export interface GrowthQualityTopic {
   xPercent?: number; // Horizontal position (%) on the illustrated parchment adventure map
   yPercent?: number; // Vertical position (%) on the illustrated parchment adventure map
   version?: number; // Curriculum version for non-destructive parent edits
+  contentVersion?: number; // System seed content version
+  customizedByParent?: boolean;
   isParentUploaded?: boolean;
   sourceFileName?: string;
   experiences: GrowthExperienceItem[]; // 4 experiences: Khám phá, Hiểu, Thực hành, Chia sẻ
@@ -451,6 +461,8 @@ export interface ParentSettings {
 }
 
 export interface BuddyAppData {
+  seedContentVersion?: number;
+  deletedBuiltinTaskIds?: string[];
   profile: ChildProfile;
   voicePreference: VoicePreference;
   pointsPolicy: PointsPolicy;

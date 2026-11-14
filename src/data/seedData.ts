@@ -1,11 +1,20 @@
 import { BuddyAppData } from '../types/domain';
 import { DEFAULT_POINTS_POLICY, getCurrentMonthKey, getTodayDateKey } from '../services/pointsPolicy';
 
+/**
+ * Monotonic version for built-in system seed content (tasks, steps, schedule, stories, growth journey).
+ * Incrementing this value triggers selective synchronization of system-managed fields
+ * for unmodified built-in entities without overwriting parent-created or parent-customized items.
+ */
+export const SEED_CONTENT_VERSION = 2026111402;
+
 export function createInitialSeedData(): BuddyAppData {
   const todayKey = getTodayDateKey();
   const monthKey = getCurrentMonthKey();
 
   return {
+    seedContentVersion: SEED_CONTENT_VERSION,
+    deletedBuiltinTaskIds: [],
     profile: {
       id: 'child-minh-anh',
       displayName: 'Minh Anh',
@@ -41,6 +50,9 @@ export function createInitialSeedData(): BuddyAppData {
         starReward: 2,
         approvalStatus: 'approved',
         lastApprovedAt: '2026-11-01T08:00:00.000Z',
+        sourceType: 'builtin',
+        contentVersion: SEED_CONTENT_VERSION,
+        customizedByParent: false,
         steps: [
           {
             id: 'step-bp-1',
@@ -117,6 +129,9 @@ export function createInitialSeedData(): BuddyAppData {
         starReward: 2,
         approvalStatus: 'approved',
         lastApprovedAt: '2026-11-01T08:00:00.000Z',
+        sourceType: 'builtin',
+        contentVersion: SEED_CONTENT_VERSION,
+        customizedByParent: false,
         steps: [
           {
             id: 'step-sd-1',
@@ -169,6 +184,9 @@ export function createInitialSeedData(): BuddyAppData {
         starReward: 2,
         approvalStatus: 'approved',
         lastApprovedAt: '2026-11-01T08:00:00.000Z',
+        sourceType: 'builtin',
+        contentVersion: SEED_CONTENT_VERSION,
+        customizedByParent: false,
         steps: [
           {
             id: 'step-ty-1',
@@ -221,6 +239,9 @@ export function createInitialSeedData(): BuddyAppData {
         starReward: 2,
         approvalStatus: 'approved',
         lastApprovedAt: '2026-11-01T08:00:00.000Z',
+        sourceType: 'builtin',
+        contentVersion: SEED_CONTENT_VERSION,
+        customizedByParent: false,
         steps: [
           {
             id: 'step-wh-1',
@@ -273,6 +294,9 @@ export function createInitialSeedData(): BuddyAppData {
         starReward: 2,
         approvalStatus: 'approved',
         lastApprovedAt: '2026-11-01T08:00:00.000Z',
+        sourceType: 'builtin',
+        contentVersion: SEED_CONTENT_VERSION,
+        customizedByParent: false,
         steps: [
           {
             id: 'step-tp-1',
@@ -372,6 +396,8 @@ export function createInitialSeedData(): BuddyAppData {
       prepReminderTime: '19:45',
       reminderEnabled: true,
       updatedAt: new Date().toISOString(),
+      contentVersion: SEED_CONTENT_VERSION,
+      customizedByParent: false,
       weeklyDays: [
         {
           dayOfWeek: 1,

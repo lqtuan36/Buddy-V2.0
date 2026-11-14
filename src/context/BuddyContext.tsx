@@ -21,7 +21,7 @@ import {
   Task,
   VoicePreference,
 } from '../types/domain';
-import { createInitialSeedData } from '../data/seedData';
+import { createInitialSeedData, SEED_CONTENT_VERSION } from '../data/seedData';
 import { appRepository, StorageMode, storyRepository } from '../services/repository';
 import {
   buildIdempotencyKey,
@@ -621,6 +621,8 @@ export const BuddyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const stamped: SchoolScheduleConfig = {
         ...nextSchedule,
         updatedAt: new Date().toISOString(),
+        contentVersion: SEED_CONTENT_VERSION,
+        customizedByParent: true,
       };
       const nextRoutines = data.routines.map((r) =>
         r.linkedTaskId === 'task-backpack'
@@ -1002,6 +1004,8 @@ export const BuddyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const stamped: GrowthQualityTopic = {
         ...updatedTopic,
         version: (existingTopic?.version || 1) + 1,
+        contentVersion: SEED_CONTENT_VERSION,
+        customizedByParent: true,
         experiences: mergedExperiences,
         updatedAt: nowIso,
       };
@@ -1593,7 +1597,13 @@ export const BuddyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         ...story,
         contentVersion: contentChanged
           ? (existing?.contentVersion || 1) + 1
-          : story.contentVersion || existing?.contentVersion || 1,
+          : story.contentVersion || existing?.contentVersion || SEED_CONTENT_VERSION,
+        customizedByParent: Boolean(
+          story.customizedByParent ||
+            existing?.customizedByParent ||
+            story.sourceType !== 'builtin' ||
+            contentChanged
+        ),
         orderIndex: story.orderIndex ?? existing?.orderIndex ?? data.stories.length + 1,
         approvalStatus: story.approvedByParent
           ? 'approved'
@@ -1890,11 +1900,63 @@ export const BuddyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // 8) PARENT DASHBOARD ACTIONS (Supports Draft, Preview, Approve, Delete Confirmation)
   const saveAndApproveTask = useCallback(
     async (updatedTask: Task, status: ApprovalStatus = 'approved') => {
-      const stampedTask: Task = {
-        ...updatedTask,
-        approvalStatus: status,
-        lastApprovedAt: new Date().toISOString(),
-      };
+      const seedTask = createInitialSeedData().tasks.find(
+        (st) => st.id === updatedTask.id
+      );
+
+      let stampedTask: Task;
+      if (!seedTask || updatedTask.sourceType === 'custom') {
+        stampedTask = {
+          ...updatedTask,
+          approvalStatus: status,
+          lastApprovedAt: new Date().toISOString(),
+          sourceType: 'custom',
+          contentVersion: SEED_CONTENT_VERSION,
+          customizedByParent: true,
+        };
+      } else {
+        const headerModified =
+          updatedTask.title.trim() !== seedTask.title.trim() ||
+          updatedTask.subtitle.trim() !== seedTask.subtitle.trim() ||
+          updatedTask.steps.length !== seedTask.steps.length;
+
+        let anyStepModified = false;
+        const stampedSteps = updatedTask.steps.map((s, sIdx) => {
+          const seedStep =
+            seedTask.steps.find((ss) => ss.id === s.id) || seedTask.steps[sIdx];
+          const stepModified =
+            !seedStep ||
+            s.actionTitle.trim() !== seedStep.actionTitle.trim() ||
+            s.instruction.trim() !== seedStep.instruction.trim() ||
+            (s.buddySpeech || '').trim() !== (seedStep.buddySpeech || '').trim() ||
+            s.simpleExplanation.trim() !== seedStep.simpleExplanation.trim() ||
+            s.buddyPraise.trim() !== seedStep.buddyPraise.trim() ||
+            s.illustrationKey !== seedStep.illustrationKey;
+
+          const isCustomStep = Boolean(s.customizedByParent || stepModified);
+          if (isCustomStep) {
+            anyStepModified = true;
+          }
+          return {
+            ...s,
+            contentVersion: SEED_CONTENT_VERSION,
+            customizedByParent: isCustomStep,
+          };
+        });
+
+        stampedTask = {
+          ...updatedTask,
+          approvalStatus: status,
+          lastApprovedAt: new Date().toISOString(),
+          sourceType: 'builtin',
+          contentVersion: SEED_CONTENT_VERSION,
+          customizedByParent: Boolean(
+            updatedTask.customizedByParent || headerModified || anyStepModified
+          ),
+          steps: stampedSteps,
+        };
+      }
+
       const exists = data.tasks.some((t) => t.id === stampedTask.id);
       const nextTasks = exists
         ? data.tasks.map((t) => (t.id === stampedTask.id ? stampedTask : t))
@@ -1930,6 +1992,9 @@ export const BuddyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         id: `task-custom-${Date.now()}`,
         approvalStatus: status,
         lastApprovedAt: new Date().toISOString(),
+        sourceType: 'custom',
+        contentVersion: SEED_CONTENT_VERSION,
+        customizedByParent: true,
       };
       const newApproval = {
         id: `approval-${Date.now()}`,
@@ -1954,9 +2019,16 @@ export const BuddyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const deleteTaskByParent = useCallback(
     async (taskId: string) => {
       const nextTasks = data.tasks.filter((t) => t.id !== taskId);
+      const isBuiltin = createInitialSeedData().tasks.some((st) => st.id === taskId);
+      const prevDeleted = data.deletedBuiltinTaskIds || [];
+      const nextDeleted =
+        isBuiltin && !prevDeleted.includes(taskId)
+          ? [...prevDeleted, taskId]
+          : prevDeleted;
       await persist({
         ...data,
         tasks: nextTasks,
+        deletedBuiltinTaskIds: nextDeleted,
       });
     },
     [data, persist]
