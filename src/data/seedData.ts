@@ -29,6 +29,7 @@ export function createInitialSeedData(): BuddyAppData {
     },
     voicePreference: {
       gender: 'female',
+      femaleVoiceId: 'Leda',
       volume: 0.9,
       muted: false,
       speechRate: 0.95,

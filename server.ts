@@ -82,13 +82,53 @@ function containsSensitiveTopic(text: string): boolean {
 }
 
 function normalizeServerVietnameseText(rawText: string): string {
-  return rawText
-    .replace(/★/g, ' ngôi sao ')
-    .replace(/\+\s*(\d+)/g, 'cộng $1 ')
-    .replace(/(\d+)\s*\/\s*(\d+)/g, '$1 trên $2')
-    .replace(/[•·]/g, ', ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  if (!rawText) return '';
+  return (
+    rawText
+      // Strip HTML tags and Markdown formatting characters so TTS never reads symbols aloud
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/__([^_]+)__/g, '$1')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/^#{1,6}\s+/gm, '')
+      // Symbols & icons
+      .replace(/★/g, ' ngôi sao ')
+      .replace(/[•·]/g, ', ')
+      .replace(/[→⇒]/g, ', ')
+      .replace(/[—–]/g, ', ')
+      // Common Vietnamese abbreviations for 6-8yo educational context
+      .replace(/\bTKB\b/g, 'thời khóa biểu')
+      .replace(/\bCLB\b/g, 'câu lạc bộ')
+      .replace(/\bSGK\b/g, 'sách giáo khoa')
+      .replace(/\bVD\s*:/gi, 'Ví dụ:')
+      .replace(/\bTP\.\s*/g, 'Thành phố ')
+      .replace(/\bGV\b/g, 'giáo viên')
+      .replace(/\bHS\b/g, 'học sinh')
+      .replace(/\bBT\b/g, 'bài tập')
+      // Numbers & measurement units
+      .replace(/\+\s*(\d+)/g, 'cộng $1 ')
+      .replace(/(\d+)\s*\/\s*(\d+)/g, '$1 trên $2')
+      .replace(/(\d+)\s*%/g, '$1 phần trăm')
+      .replace(/(\d+)\s*kg\b/gi, '$1 ki-lô-gam')
+      .replace(/(\d+)\s*cm\b/gi, '$1 xăng-ti-mét')
+      .replace(/(\d+)\s*mm\b/gi, '$1 mi-li-mét')
+      .replace(/(\d+)\s*km\b/gi, '$1 ki-lô-mét')
+      .replace(/(\d+)\s*ml\b/gi, '$1 mi-li-lít')
+      .replace(/(\d+)\s*m\b/gi, '$1 mét')
+      .replace(/(\d+)\s*g\b/gi, '$1 gam')
+      .replace(/(\d+)\s*l\b/gi, '$1 lít')
+      .replace(/(\d+)\s*phút\b/gi, '$1 phút')
+      .replace(/(\d+)\s*giây\b/gi, '$1 giây')
+      // Normalize repeated punctuation for natural pauses
+      .replace(/\.{2,}|…+/g, '. ')
+      .replace(/!{2,}/g, '!')
+      .replace(/\?{2,}/g, '?')
+      .replace(/\s+([,.;!?])/g, '$1')
+      .replace(/([,.;!?])(?=[A-Za-zÀ-ỹ])/g, '$1 ')
+      .replace(/\s+/g, ' ')
+      .trim()
+  );
 }
 
 /**
@@ -512,48 +552,146 @@ Nguyên tắc bắt buộc:
     }
   });
 
-  // Canonical style instruction for Zephyr (Friendly: warm, cheerful peer companion of 6-8yo child)
-  const ZEPHYR_FRIENDLY_BASE_STYLE =
-    "Nói tiếng Việt tự nhiên như một cô bạn cùng tuổi đang ngồi cạnh một bạn nhỏ 6–8 tuổi. Chất giọng trẻ trung, ấm áp, cao độ vừa, có nét cười nhẹ. Giữ rõ thanh điệu tiếng Việt. Trong lời Buddy trò chuyện, xưng ‘mình’, gọi ‘bạn’. Khi lời thoại có tên riêng, gọi tên thân mật và tự nhiên.\n\nĐọc nguyên văn lời thoại được cung cấp. Đọc gọn các tiếng ‘ơi’, ‘nhé’, ‘nhỉ’. Chỉ bật cười khi lời thoại có tiếng cười.";
+  // ============================================================================
+  // BUDDY V2.1 – 3-MODE CONTEXT-AWARE VOICE STYLE ENGINE (PART II & PART III)
+  // Strictly separated from spoken text via speechMetadata.style so Gemini TTS
+  // never reads technical instructions aloud.
+  // ============================================================================
+  const VOICE_STYLE_COMPANION =
+    'Nói tiếng Việt tự nhiên như một người bạn vui vẻ, dịu dàng và ấm áp đang trò chuyện với trẻ 6–8 tuổi. Phát âm rõ từng từ, giữ thanh điệu chính xác, nhịp nói vừa phải. Khi hướng dẫn, nhấn nhẹ vào hành động quan trọng, ngắt nghỉ hợp lý để trẻ dễ hiểu và thực hiện. Giữ nét cười tự nhiên trong giọng nói, không lên giọng quá cao, không ra lệnh.';
 
-  function buildFemaleCompanionStylePrompt(context: string, moodStylePrompt?: string): string {
-    let delivery = '';
-    switch (context) {
-      case 'greeting':
-        delivery =
-          'Gọi tên bạn thân mật rồi nghỉ một nhịp ngắn. Nếu câu chào kết thúc bằng câu hỏi, thể hiện sự tò mò và kết câu mềm.';
-        break;
-      case 'guide':
-      case 'help':
-        delivery =
-          "Nói gọn từng cụm, nhấn nhẹ vào hành động chính. Khi giải thích lúc bạn nhỏ bấm ‘Chưa hiểu’, chậm lại một chút, giọng mềm và kiên nhẫn.";
-        break;
-      case 'celebration':
-        delivery =
-          'Vui lên như hai người bạn vừa cùng làm được một việc. Nhấn vào điều bạn nhỏ vừa hoàn thành và kết câu ấm áp.';
-        break;
-      case 'story':
-      case 'podcast':
-        delivery =
-          'Giữ cùng chất giọng Zephyr ấm áp, trong trẻo. Để ngữ điệu thay đổi theo tình tiết, kể chậm và êm ở đoạn trước giờ ngủ. Giữ nguyên lời nhân vật, tên riêng và ngôi kể trong truyện.';
-        if (moodStylePrompt) {
-          delivery += ` ${moodStylePrompt}`;
-        }
-        break;
-      case 'chat':
-      default:
-        delivery =
-          'Nói tự nhiên như hai người bạn đang trò chuyện. Khi lời thoại có chi tiết ngộ nghĩnh, kể phần đầu bình thường, ngừng nhẹ trước chi tiết bất ngờ rồi sáng giọng ở từ thú vị.';
-        break;
+  const VOICE_STYLE_STORYTELLING =
+    'Kể chuyện bằng tiếng Việt tự nhiên, giọng trẻ trung, ấm áp, nhẹ nhàng và giàu biểu cảm. Ngắt nghỉ theo diễn biến câu chuyện, nhấn vào những chi tiết quan trọng và thay đổi cảm xúc vừa đủ để tạo sự hình dung. Giữ nhịp đọc êm dịu, rõ chữ, không diễn kịch quá mức. Duy trì màu giọng ổn định từ đầu đến cuối câu chuyện.';
+
+  const VOICE_STYLE_CELEBRATION =
+    'Nói tiếng Việt với sự vui mừng tự nhiên, giọng tươi sáng, hào hứng nhưng không hét lớn. Thể hiện cảm giác hai người bạn vừa hoàn thành một điều thú vị cùng nhau. Phát âm rõ ràng, giữ nét ấm áp và tránh cường điệu.';
+
+  function resolveBuddyVoiceName(
+    gender: string,
+    requestedVoiceName?: string,
+    femaleVoiceId?: string
+  ): 'Puck' | 'Leda' | 'Zephyr' {
+    const cleanRequested = String(requestedVoiceName || '').trim();
+    if (cleanRequested === 'Puck' || cleanRequested === 'Leda' || cleanRequested === 'Zephyr') {
+      return cleanRequested;
     }
-    return `${ZEPHYR_FRIENDLY_BASE_STYLE}\n\n${delivery}`;
+    if (gender === 'male') {
+      return 'Puck';
+    }
+    const cleanFemale = String(femaleVoiceId || '').trim();
+    if (cleanFemale === 'Leda') {
+      return 'Leda';
+    }
+    if (cleanFemale === 'Zephyr') {
+      return 'Zephyr';
+    }
+    return 'Leda';
   }
 
-  // 3) VIETNAMESE SERVER-SIDE TTS ENDPOINT (Gemini 3.8 Flash Lite TTS / Flash TTS with separated style metadata)
+  function resolveVoiceStyleMode(
+    context: string
+  ): 'companion' | 'storytelling' | 'celebration' {
+    const cleanCtx = String(context || 'chat').toLowerCase();
+    if (cleanCtx === 'story' || cleanCtx === 'podcast') {
+      return 'storytelling';
+    }
+    if (cleanCtx === 'celebration') {
+      return 'celebration';
+    }
+    return 'companion';
+  }
+
+  function buildBuddyVoiceStyleInstruction(
+    context: string,
+    voiceName: 'Puck' | 'Leda' | 'Zephyr'
+  ): {
+    mode: 'companion' | 'storytelling' | 'celebration';
+    styleInstruction: string;
+  } {
+    const mode = resolveVoiceStyleMode(context);
+    const baseModeInstruction =
+      mode === 'storytelling'
+        ? VOICE_STYLE_STORYTELLING
+        : mode === 'celebration'
+        ? VOICE_STYLE_CELEBRATION
+        : VOICE_STYLE_COMPANION;
+
+    const voicePersonaAnchor =
+      voiceName === 'Puck'
+        ? 'Giọng bạn nhỏ nam (Puck) vui vẻ, năng động, rõ chữ, ấm áp. Đọc nguyên văn lời thoại tiếng Việt được cung cấp.'
+        : voiceName === 'Leda'
+        ? 'Giọng cô bạn nhỏ (Leda) trẻ trung, dịu dàng, tươi sáng, rõ chữ. Đọc nguyên văn lời thoại tiếng Việt được cung cấp.'
+        : 'Giọng cô bạn nhỏ (Zephyr) rõ ràng, ấm áp, thân thiện, tự nhiên. Đọc nguyên văn lời thoại tiếng Việt được cung cấp.';
+
+    return {
+      mode,
+      styleInstruction: `${baseModeInstruction} ${voicePersonaAnchor}`,
+    };
+  }
+
+  /**
+   * Splits a long story paragraph into natural sentence chunks (<= maxChars)
+   * without ever cutting mid-word or mid-sentence (Part V.1).
+   */
+  function splitParagraphIntoNaturalSentenceChunks(
+    normalizedParagraph: string,
+    maxChars = 360
+  ): string[] {
+    const trimmed = normalizedParagraph.trim();
+    if (!trimmed) return [];
+    if (trimmed.length <= maxChars) return [trimmed];
+
+    const sentences = trimmed
+      .split(/(?<=[.!?…])\s+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    if (sentences.length <= 1) {
+      // Split by clause punctuation (; or ,) if a single long sentence exceeds maxChars
+      const clauses = trimmed
+        .split(/(?<=[;:,])\s+/)
+        .map((c) => c.trim())
+        .filter(Boolean);
+      const chunks: string[] = [];
+      let current = '';
+      for (const clause of clauses) {
+        if ((current + ' ' + clause).trim().length <= maxChars) {
+          current = (current + ' ' + clause).trim();
+        } else {
+          if (current) chunks.push(current);
+          current = clause;
+        }
+      }
+      if (current) chunks.push(current);
+      return chunks.length > 0 ? chunks : [trimmed];
+    }
+
+    const chunks: string[] = [];
+    let current = '';
+    for (const sentence of sentences) {
+      if ((current + ' ' + sentence).trim().length <= maxChars) {
+        current = (current + ' ' + sentence).trim();
+      } else {
+        if (current) chunks.push(current);
+        current = sentence;
+      }
+    }
+    if (current) chunks.push(current);
+    return chunks.length > 0 ? chunks : [trimmed];
+  }
+
+  // 3) VIETNAMESE SERVER-SIDE TTS ENDPOINT (Gemini 3.8 Flash TTS / Lite TTS with 3-Mode Style Engine)
   app.post('/api/tts', async (req, res) => {
     try {
-      const { text = '', gender = 'female', context = 'chat', simulateError = false } = req.body || {};
-      const cleanText = normalizeServerVietnameseText(String(text)).slice(0, 900);
+      const {
+        text = '',
+        gender = 'female',
+        femaleVoiceId,
+        voiceName: requestedVoiceName,
+        context = 'chat',
+        simulateError = false,
+      } = req.body || {};
+      const cleanText = normalizeServerVietnameseText(String(text)).slice(0, 950);
 
       if (!cleanText) {
         return res.status(400).json({ error: 'Không có nội dung cần đọc.' });
@@ -568,42 +706,34 @@ Nguyên tắc bắt buộc:
 
       const ai = getGeminiClient();
 
-      // Official Gemini TTS voice mapping: male -> Puck, female -> Zephyr
-      const voiceName = gender === 'male' ? 'Puck' : 'Zephyr';
+      // Official Gemini TTS voice mapping: male -> Puck, female -> Leda or Zephyr
+      const voiceName = resolveBuddyVoiceName(
+        String(gender),
+        requestedVoiceName,
+        femaleVoiceId
+      );
+      const effectiveGender = voiceName === 'Puck' ? 'male' : 'female';
 
       const moodInfo = detectParagraphNarrativeMood(cleanText, 0, 1);
-      let styleInstruction: string;
+      const { mode: styleMode, styleInstruction } = buildBuddyVoiceStyleInstruction(
+        String(context || 'chat'),
+        voiceName
+      );
 
-      if (gender === 'male') {
-        styleInstruction =
-          'Giọng bạn nhỏ nam (Puck) hoạt bát, vui tươi, ấm áp và thân thiện (tiếng Việt chuẩn vi-VN). Nhịp điệu sinh động, phát âm tròn vành rõ từng chữ, như một người bạn đồng hành đang trò chuyện cùng bạn 6–8 tuổi (xưng mình - gọi bạn, không mang giọng người lớn dạy bảo). Đọc nguyên văn lời thoại được cung cấp.';
-        if (context === 'story') {
-          styleInstruction += ` ${moodInfo.stylePrompt}`;
-        } else if (context === 'guide' || context === 'help') {
-          styleInstruction +=
-            ' Nói gọn từng cụm, nhấn nhẹ vào hành động chính để bạn nhỏ 6–8 tuổi nghe hiểu ngay.';
-        } else if (context === 'celebration') {
-          styleInstruction +=
-            ' Vui lên như hai người bạn vừa cùng làm được một việc, kết câu ấm áp.';
-        } else if (context === 'greeting') {
-          styleInstruction +=
-            ' Gọi tên bạn thân mật rồi nghỉ một nhịp ngắn, kết câu mềm và thân thiện.';
-        }
-      } else {
-        styleInstruction = buildFemaleCompanionStylePrompt(
-          String(context || 'chat'),
-          context === 'story' ? moodInfo.stylePrompt : undefined
-        );
-      }
-
-      // Disk cache for /api/tts keyed by v2.4_zephyr_puck + voiceName (Puck / Zephyr) + context
+      // Short utterance cache keyed by v2.1_voice_engine + voiceName + styleMode + cleanText
       const ttsCacheHash = crypto
         .createHash('sha1')
-        .update(`v2.4_zephyr_puck|${voiceName}|${gender}|${context}|${cleanText}`)
+        .update(`v2.1_voice_engine|${voiceName}|${styleMode}|${cleanText}`)
         .digest('hex')
         .slice(0, 20);
-      const ttsCachePath = path.join(PODCAST_CACHE_DIR, `tts_v24_${voiceName}_${ttsCacheHash}.wav`);
-      const ttsFallbackCachePath = path.join(PODCAST_CACHE_DIR, `tts_fb_v24_${voiceName}_${ttsCacheHash}.wav`);
+      const ttsCachePath = path.join(
+        PODCAST_CACHE_DIR,
+        `tts_v21_${voiceName}_${ttsCacheHash}.wav`
+      );
+      const ttsFallbackCachePath = path.join(
+        PODCAST_CACHE_DIR,
+        `tts_fb_v21_${voiceName}_${ttsCacheHash}.wav`
+      );
 
       if (fs.existsSync(ttsCachePath)) {
         try {
@@ -617,9 +747,10 @@ Nguyên tắc bắt buộc:
               bitsPerSample: 16,
               voiceName,
               requestedVoiceName: voiceName,
+              styleMode,
               engineUsed: 'gemini-tts',
               isFallback: false,
-              gender,
+              gender: effectiveGender,
               mood: moodInfo.mood,
               cached: true,
             });
@@ -629,7 +760,6 @@ Nguyên tắc bắt buộc:
         }
       }
 
-      // If all Gemini TTS models are currently in 429 quota cooldown and a fallback WAV is already cached on disk, serve it immediately
       const allModelsInCooldown =
         isModelInQuotaCooldown('gemini-3.8-flash-lite-tts') &&
         isModelInQuotaCooldown('gemini-3.8-flash-tts');
@@ -643,11 +773,12 @@ Nguyên tắc bắt buộc:
               sampleRate: 24000,
               channels: 1,
               bitsPerSample: 16,
-              voiceName: `vi-VN-${gender}-fallback`,
+              voiceName: `vi-VN-${effectiveGender}-fallback`,
               requestedVoiceName: voiceName,
+              styleMode,
               engineUsed: 'server-vi-fallback',
               isFallback: true,
-              gender,
+              gender: effectiveGender,
               mood: moodInfo.mood,
               cached: true,
             });
@@ -657,11 +788,12 @@ Nguyên tắc bắt buộc:
         }
       }
 
-      const { pcmBuffer, engineUsed } = await synthesizeVietnameseTtsSegment(
+      const { pcmBuffer, engineUsed, modelUsed } = await synthesizeVietnameseTtsSegment(
         ai,
         cleanText,
         voiceName,
-        styleInstruction
+        styleInstruction,
+        styleMode
       );
 
       const wavBuffer = buildWavBufferFromPcm(pcmBuffer, 24000, 1, 16);
@@ -686,11 +818,13 @@ Nguyên tắc bắt buộc:
         sampleRate: 24000,
         channels: 1,
         bitsPerSample: 16,
-        voiceName: engineUsed === 'gemini-tts' ? voiceName : `vi-VN-${gender}-fallback`,
+        voiceName: engineUsed === 'gemini-tts' ? voiceName : `vi-VN-${effectiveGender}-fallback`,
         requestedVoiceName: voiceName,
+        styleMode,
+        modelUsed,
         engineUsed,
         isFallback: engineUsed !== 'gemini-tts',
-        gender,
+        gender: effectiveGender,
         mood: moodInfo.mood,
       });
     } catch (err) {
@@ -704,23 +838,27 @@ Nguyên tắc bắt buộc:
     }
   });
 
-  // 3B) CONTINUOUS PODCAST EPISODE SYNTHESIZER & CACHE ENDPOINT (v1.4 Section A.3 & A.4)
-  // Synthesizes the entire story episode into ONE continuous WAV audio stream with expressive
-  // Vietnamese emotional styling per paragraph, natural pauses, standards-compliant WAV/PCM normalization,
-  // controlled per-scene synthesis + concatenation, exact sceneTimeline timestamps, and explicit error classification.
+  // 3B) SESSION-BASED PODCAST EPISODE ENGINE (v2.1 PART IV & PART V: GENERATE ONCE PER SESSION)
+  // - Synthesizes the story episode once when a listening session opens.
+  // - Does NOT reuse stale podcast files from previous sessions and does NOT store permanent audio on disk.
+  // - Splits long paragraphs at natural sentence boundaries with unified Mode 2 Storytelling style
+  //   and consistent voiceName (Puck, Leda, or Zephyr).
+  // - Returns audioBase64 (audio/wav) + exact sceneTimeline + actualDurationSeconds directly so the
+  //   browser creates a session-scoped ObjectURL in memory (0 extra Gemini calls during Play/Pause/Seek/Speed).
   app.post('/api/podcast/synthesize-episode', async (req, res) => {
     try {
       const {
         storyId = 'story-default',
+        sessionId = `session-${Date.now()}`,
         title = '',
         paragraphs = [],
         moralLesson = '',
         gender = 'female',
+        femaleVoiceId,
+        voiceName: requestedVoiceName,
         contentVersion = 1,
         sceneImages = [],
         sceneCues = [],
-        forceRegenerate = false,
-        synthesizePerScene = false,
         simulateErrorCategory = null,
       } = req.body || {};
 
@@ -744,29 +882,16 @@ Nguyên tắc bắt buộc:
         });
       }
 
-      const voiceGender = gender === 'male' ? 'male' : 'female';
-      const voiceName = voiceGender === 'male' ? 'Puck' : 'Zephyr';
-      const voiceVersion =
-        voiceGender === 'male'
-          ? `gemini-3.8-flash-tts-vi-v2.2-puck-${voiceName}`
-          : `gemini-3.8-flash-tts-vi-v2.4-zephyr-${voiceName}`;
+      const voiceName = resolveBuddyVoiceName(
+        String(gender),
+        requestedVoiceName,
+        femaleVoiceId
+      );
+      const voiceGender = voiceName === 'Puck' ? 'male' : 'female';
+      const voiceVersion = `gemini-tts-vi-v2.1-session-${voiceName.toLowerCase()}`;
 
-      const hashSource = JSON.stringify({
-        storyId,
-        title,
-        paragraphs: cleanParagraphs,
-        moralLesson,
-        voiceGender,
-        voiceName,
-        contentVersion,
-        voiceVersion,
-      });
-      const contentHash = crypto.createHash('sha1').update(hashSource).digest('hex').slice(0, 12);
       const safeId = String(storyId).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 32);
-      const voiceAssetTag = voiceGender === 'male' ? 'Puck' : 'Zephyr';
-      const audioAssetId = `ep_${safeId}_v${contentVersion}_${voiceGender}_${voiceAssetTag}_${contentHash}`;
-      const wavFilePath = path.join(PODCAST_CACHE_DIR, `${audioAssetId}.wav`);
-      const metaFilePath = path.join(PODCAST_CACHE_DIR, `${audioAssetId}.json`);
+      const audioAssetId = `session_${safeId}_${voiceName}_${Date.now()}`;
 
       // Compute deterministic fallback timeline so scene metadata is always well-structured
       const estimatedSceneTimeline = buildEstimatedSceneTimeline(
@@ -776,7 +901,7 @@ Nguyên tắc bắt buộc:
       const estimatedDurationSec =
         estimatedSceneTimeline[estimatedSceneTimeline.length - 1]?.endTimeSec || 180;
 
-      // Support deterministic simulation of error categories for automated verification (Section E)
+      // Support deterministic simulation of error categories for automated verification
       if (simulateErrorCategory) {
         const simCat = String(simulateErrorCategory);
         const statusMap: Record<string, number> = {
@@ -787,17 +912,17 @@ Nguyên tắc bắt buộc:
           invalid_wav: 422,
         };
         const reasonMap: Record<string, string> = {
-          api_config: 'Lỗi cấu hình API Gemini TTS (thiếu hoặc sai GEMINI_API_KEY).',
-          quota_429: 'Hạn mức Gemini TTS tạm thời đầy (HTTP 429 Quota). Vui lòng đợi ít phút rồi bấm Thử lại.',
-          server_5xx: 'Máy chủ Gemini TTS đang bận (HTTP 5xx). Vui lòng bấm Thử lại.',
-          timeout: 'Quá thời gian chờ phản hồi từ Gemini TTS (Timeout). Vui lòng bấm Thử lại.',
-          invalid_wav: 'Dữ liệu âm thanh WAV/PCM trả về không hợp lệ.',
+          api_config: 'Ôi, mình chưa kể được truyện lúc này. Bạn thử lại cùng mình nhé!',
+          quota_429: 'Ôi, mình chưa kể được truyện lúc này. Bạn thử lại cùng mình nhé!',
+          server_5xx: 'Ôi, mình chưa kể được truyện lúc này. Bạn thử lại cùng mình nhé!',
+          timeout: 'Ôi, mình chưa kể được truyện lúc này. Bạn thử lại cùng mình nhé!',
+          invalid_wav: 'Ôi, mình chưa kể được truyện lúc này. Bạn thử lại cùng mình nhé!',
         };
         return res.status(statusMap[simCat] || 502).json({
           ok: false,
           audioStatus: 'failed',
           errorCategory: simCat,
-          reason: reasonMap[simCat] || 'Lỗi mô phỏng kiểm thử âm thanh Podcast.',
+          reason: reasonMap[simCat] || 'Ôi, mình chưa kể được truyện lúc này. Bạn thử lại cùng mình nhé!',
           actualDurationSeconds: estimatedDurationSec,
           sceneTimeline: estimatedSceneTimeline,
           voiceId: voiceName,
@@ -806,33 +931,13 @@ Nguyên tắc bắt buộc:
         });
       }
 
-      // Return cached continuous episode immediately if already generated and verified on disk
-      if (!forceRegenerate && fs.existsSync(wavFilePath) && fs.existsSync(metaFilePath)) {
-        try {
-          const stat = fs.statSync(wavFilePath);
-          if (stat.size > 1024) {
-            const cachedMeta = JSON.parse(fs.readFileSync(metaFilePath, 'utf-8'));
-            return res.json({
-              ok: true,
-              cached: true,
-              verifiedOnDisk: true,
-              audioStatus: 'ready',
-              ...cachedMeta,
-            });
-          }
-        } catch {
-          // Re-synthesize if cache metadata is corrupted
-        }
-      }
-
       const ai = getGeminiClient();
       if (!ai) {
         return res.status(503).json({
           ok: false,
           audioStatus: 'failed',
           errorCategory: 'api_config',
-          reason:
-            'Máy chủ chưa cấu hình khóa Gemini TTS nên chưa thể tạo tệp âm thanh Podcast thực tế. Vui lòng kiểm tra cấu hình máy chủ và bấm Thử lại.',
+          reason: 'Ôi, mình chưa kể được truyện lúc này. Bạn thử lại cùng mình nhé!',
           actualDurationSeconds: estimatedDurationSec,
           sceneTimeline: estimatedSceneTimeline,
           voiceId: voiceName,
@@ -856,61 +961,84 @@ Nguyên tắc bắt buộc:
           spokenSegment = `${rawPara} Bài học nhỏ ấm áp của câu chuyện là: ${moralLesson}`;
         }
 
-        const normalizedSegment = normalizeServerVietnameseText(spokenSegment).slice(0, 1400);
+        const normalizedSegment = normalizeServerVietnameseText(spokenSegment).slice(0, 1600);
         const moodInfo = detectParagraphNarrativeMood(
           rawPara,
           i,
           cleanParagraphs.length
         );
         const wordCount = Math.max(6, normalizedSegment.split(/\s+/).length);
+        const subChunks = splitParagraphIntoNaturalSentenceChunks(normalizedSegment, 380);
 
         return {
           index: i,
           rawPara,
           normalizedSegment,
+          subChunks,
           moodInfo,
           wordCount,
         };
       });
 
-      const maleBaseVoiceDesc =
-        'Giọng bạn nhỏ nam (Puck) kể chuyện thiếu nhi tiếng Việt chuẩn (vi-VN), hoạt bát, ấm áp, sinh động, phát âm tròn vành rõ chữ. Đọc nguyên văn lời thoại được cung cấp.';
+      // Unified Mode 2 Storytelling Style Instruction so voice timbre remains 100% consistent across all chunks (Part III.2 & Part V.2)
+      const { styleInstruction: unifiedStorytellingStyle } = buildBuddyVoiceStyleInstruction(
+        'story',
+        voiceName
+      );
 
       const totalCharCount = paragraphUnits.reduce(
         (sum, u) => sum + u.normalizedSegment.length,
         0
       );
-      const shouldChunkByScene = Boolean(synthesizePerScene) || totalCharCount > 1600;
+      const shouldChunkByScene = totalCharCount > 900 || paragraphUnits.length > 3;
 
       let fullPcmBuffer: Buffer | null = null;
       let perSceneDurationsSec: number[] | null = null;
       let timelineSyncMethod: 'exact-per-scene-pcm' | 'word-ratio-calibrated-pcm' =
         'word-ratio-calibrated-pcm';
+      let episodeEngineUsed: 'gemini-tts' | 'server-vi-fallback' = 'gemini-tts';
+      let episodeModelUsed = 'gemini-3.8-flash-tts';
 
       if (shouldChunkByScene && paragraphUnits.length > 1) {
         try {
           const scenePcmBuffers: Buffer[] = [];
           const sceneSecs: number[] = [];
-          // 0.35s natural silence pause between scenes (24000 * 0.35 * 2 bytes, even-aligned)
-          const pauseSamples = Math.floor(SAMPLE_RATE * 0.35);
-          const silenceBuffer = Buffer.alloc(pauseSamples * 2, 0);
+          // 0.30s natural silence pause between story scenes/paragraphs (Part V.3)
+          const interSceneSilence = Buffer.alloc(Math.floor(SAMPLE_RATE * 0.3) * 2, 0);
+          // 0.16s natural breath pause between sub-sentence chunks within a long paragraph
+          const intraParaSilence = Buffer.alloc(Math.floor(SAMPLE_RATE * 0.16) * 2, 0);
 
           for (let i = 0; i < paragraphUnits.length; i++) {
             const unit = paragraphUnits[i];
-            const scenePrompt =
-              voiceGender === 'male'
-                ? `${maleBaseVoiceDesc} ${unit.moodInfo.stylePrompt}`
-                : buildFemaleCompanionStylePrompt('podcast', unit.moodInfo.stylePrompt);
-            const { pcmBuffer } = await synthesizeVietnameseTtsSegment(
-              ai,
-              unit.normalizedSegment,
-              voiceName,
-              scenePrompt
-            );
+            const chunkBuffers: Buffer[] = [];
+
+            for (let cIdx = 0; cIdx < unit.subChunks.length; cIdx++) {
+              const subText = unit.subChunks[cIdx];
+              const segRes = await synthesizeVietnameseTtsSegment(
+                ai,
+                subText,
+                voiceName,
+                unifiedStorytellingStyle,
+                'storytelling'
+              );
+              if (segRes.engineUsed === 'server-vi-fallback') {
+                episodeEngineUsed = 'server-vi-fallback';
+              }
+              if (segRes.modelUsed) {
+                episodeModelUsed = segRes.modelUsed;
+              }
+              chunkBuffers.push(segRes.pcmBuffer);
+              if (cIdx < unit.subChunks.length - 1) {
+                chunkBuffers.push(intraParaSilence);
+              }
+            }
+
+            const paragraphPcm =
+              chunkBuffers.length === 1 ? chunkBuffers[0] : Buffer.concat(chunkBuffers);
             const isLast = i === paragraphUnits.length - 1;
             const combinedSceneBuf = isLast
-              ? pcmBuffer
-              : Buffer.concat([pcmBuffer, silenceBuffer]);
+              ? paragraphPcm
+              : Buffer.concat([paragraphPcm, interSceneSilence]);
             scenePcmBuffers.push(combinedSceneBuf);
             sceneSecs.push(Number((combinedSceneBuf.length / BYTES_PER_SECOND).toFixed(2)));
           }
@@ -927,21 +1055,22 @@ Nguyên tắc bắt buộc:
       }
 
       if (!fullPcmBuffer) {
-        const episodeStylePrompt =
-          voiceGender === 'male'
-            ? `${maleBaseVoiceDesc} Đọc diễn cảm tự nhiên như kể chuyện cổ tích trước giờ đi ngủ, ngắt nghỉ nhẹ nhàng giữa các đoạn.`
-            : buildFemaleCompanionStylePrompt('podcast');
         const combinedEpisodeScript = paragraphUnits
           .map((u) => u.normalizedSegment)
-          .join(' ... ');
+          .join('. ');
 
-        const { pcmBuffer } = await synthesizeVietnameseTtsSegment(
+        const segRes = await synthesizeVietnameseTtsSegment(
           ai,
           combinedEpisodeScript,
           voiceName,
-          episodeStylePrompt
+          unifiedStorytellingStyle,
+          'storytelling'
         );
-        fullPcmBuffer = pcmBuffer;
+        fullPcmBuffer = segRes.pcmBuffer;
+        episodeEngineUsed = segRes.engineUsed;
+        if (segRes.modelUsed) {
+          episodeModelUsed = segRes.modelUsed;
+        }
         timelineSyncMethod = 'word-ratio-calibrated-pcm';
       }
 
@@ -989,34 +1118,33 @@ Nguyên tắc bắt buộc:
 
       const fullWavBuffer = buildWavBufferFromPcm(fullPcmBuffer, SAMPLE_RATE, 1, 16);
 
-      const episodeMeta = {
+      return res.json({
+        ok: true,
+        cached: false,
+        sessionBased: true,
+        sessionId: String(sessionId),
+        audioStatus: 'ready',
         audioAssetId,
-        audioUrl: `/api/podcast/audio/${audioAssetId}`,
+        audioBase64: fullWavBuffer.toString('base64'),
+        mimeType: 'audio/wav',
+        sampleRate: SAMPLE_RATE,
+        channels: 1,
+        bitsPerSample: 16,
         actualDurationSeconds,
         exactDurationSec,
         timelineSyncMethod,
-        voiceId: voiceName,
+        voiceId: episodeEngineUsed === 'gemini-tts' ? voiceName : `vi-VN-${voiceGender}-fallback`,
+        requestedVoiceId: voiceName,
         voiceGender,
         voiceVersion,
+        styleMode: 'storytelling',
+        engineUsed: episodeEngineUsed,
+        modelUsed: episodeModelUsed,
+        isFallback: episodeEngineUsed !== 'gemini-tts',
         baseSpeed: 1.0,
         contentVersion,
         sceneTimeline,
         synthesizedAt: new Date().toISOString(),
-      };
-
-      try {
-        fs.writeFileSync(wavFilePath, fullWavBuffer);
-        fs.writeFileSync(metaFilePath, JSON.stringify(episodeMeta, null, 2), 'utf-8');
-      } catch {
-        // Ignore disk cache write errors if /tmp is full
-      }
-
-      return res.json({
-        ok: true,
-        cached: false,
-        verifiedOnDisk: true,
-        audioStatus: 'ready',
-        ...episodeMeta,
       });
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
@@ -1029,32 +1157,30 @@ Nguyên tắc bắt buộc:
         | 'timeout'
         | 'invalid_wav' = 'server_5xx';
       let httpStatus = 502;
-      let userReason =
-        'Không thể tạo tệp âm thanh Podcast lúc này. Ba mẹ hoặc bạn vui lòng bấm "Thử lại" để tạo lại âm thanh.';
+      const userReason =
+        'Ôi, mình chưa kể được truyện lúc này. Bạn thử lại cùng mình nhé!';
 
       if (/429|RESOURCE_EXHAUSTED|quota/i.test(detail)) {
         errorCategory = 'quota_429';
         httpStatus = 429;
-        userReason =
-          'Hạn mức tạo giọng đọc AI (Gemini TTS Quota 429) tạm thời đã hết. Vui lòng đợi ít phút rồi bấm "Thử lại".';
       } else if (/API_KEY|UNAUTHENTICATED|PERMISSION_DENIED|401|403/i.test(detail)) {
         errorCategory = 'api_config';
         httpStatus = 503;
-        userReason =
-          'Lỗi cấu hình khóa Gemini TTS trên máy chủ. Vui lòng kiểm tra cấu hình và bấm "Thử lại".';
       } else if (/timeout|ETIMEDOUT|DEADLINE_EXCEEDED|AbortError/i.test(detail)) {
         errorCategory = 'timeout';
         httpStatus = 504;
-        userReason =
-          'Quá thời gian chờ phản hồi từ máy chủ tạo giọng đọc (Timeout). Vui lòng bấm "Thử lại".';
       } else if (/EMPTY_PCM|WAV|RIFF|invalid_wav/i.test(detail)) {
         errorCategory = 'invalid_wav';
         httpStatus = 422;
-        userReason =
-          'Dữ liệu âm thanh WAV/PCM không hợp lệ. Vui lòng bấm "Thử lại" để tạo lại bản thu.';
       }
 
-      const { paragraphs = [], sceneImages = [], gender = 'female' } = req.body || {};
+      const {
+        paragraphs = [],
+        sceneImages = [],
+        gender = 'female',
+        femaleVoiceId,
+        voiceName: requestedVoiceName,
+      } = req.body || {};
       const cleanParagraphs: string[] = Array.isArray(paragraphs)
         ? paragraphs.map((p: unknown) => String(p || '').trim()).filter(Boolean)
         : [];
@@ -1064,6 +1190,11 @@ Nguyên tắc bắt buộc:
       );
       const estDuration =
         fallbackTimeline[fallbackTimeline.length - 1]?.endTimeSec || 180;
+      const resolvedVoice = resolveBuddyVoiceName(
+        String(gender),
+        requestedVoiceName,
+        femaleVoiceId
+      );
 
       return res.status(httpStatus).json({
         ok: false,
@@ -1073,8 +1204,8 @@ Nguyên tắc bắt buộc:
         detail,
         actualDurationSeconds: estDuration,
         sceneTimeline: fallbackTimeline,
-        voiceId: gender === 'male' ? 'Puck' : 'Zephyr',
-        voiceGender: gender === 'male' ? 'male' : 'female',
+        voiceId: resolvedVoice,
+        voiceGender: resolvedVoice === 'Puck' ? 'male' : 'female',
       });
     }
   });
@@ -2446,89 +2577,118 @@ async function synthesizeVietnameseFallbackPcm24kMono(
 
 /**
  * Synthesizes a single Vietnamese speech segment using Gemini 3.8 Flash TTS / Lite TTS
- * with proper speechMetadata placement on Part, per-model 429 cooldown tracking, and fallback safety.
+ * with proper speechMetadata placement on Part, per-model 429 cooldown tracking,
+ * bounded retry with backoff on transient errors, and fallback safety.
  */
 async function synthesizeVietnameseTtsSegment(
   ai: GoogleGenAI | null,
   text: string,
   voiceName: string,
-  stylePrompt: string
+  stylePrompt: string,
+  styleMode: 'companion' | 'storytelling' | 'celebration' = 'companion'
 ): Promise<{
   pcmBuffer: Buffer;
   sourceSampleRate: number;
   sourceChannels: number;
   engineUsed: 'gemini-tts' | 'server-vi-fallback';
+  modelUsed: string;
 }> {
   let inlineData: { data?: string; mimeType?: string } | undefined;
   let lastError: unknown = null;
+  let selectedModelName = 'gemini-3.8-flash-lite-tts';
 
-  // Try TTS models in priority order: gemini-3.8-flash-lite-tts (low-latency single-speaker) then gemini-3.8-flash-tts
-  const ttsModelsToTry = ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts'];
+  // For storytelling/podcast mode, prioritize gemini-3.8-flash-tts (richer prosody & emotional continuity),
+  // then fall back to gemini-3.8-flash-lite-tts. For short companion/celebration cues, prioritize lite-tts for low latency.
+  const ttsModelsToTry =
+    styleMode === 'storytelling'
+      ? ['gemini-3.8-flash-tts', 'gemini-3.8-flash-lite-tts']
+      : ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts'];
 
   if (ai) {
     for (const modelName of ttsModelsToTry) {
       if (isModelInQuotaCooldown(modelName)) {
         continue;
       }
-      try {
-        const response = await ai.models.generateContent({
-          model: modelName,
-          contents: [
-            {
-              role: 'user',
-              parts: [
-                {
-                  text,
-                  speechMetadata: {
-                    style: stylePrompt,
+      // Bounded retry (max 2 attempts per model for transient 5xx/network hiccups; never retry 429 on same model)
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          const response = await ai.models.generateContent({
+            model: modelName,
+            contents: [
+              {
+                role: 'user',
+                parts: [
+                  {
+                    text,
+                    speechMetadata: {
+                      style: stylePrompt,
+                    },
                   },
-                },
-              ],
-            },
-          ],
-          config: {
-            responseModalities: ['AUDIO'],
-            speechConfig: {
-              voiceConfig: {
-                prebuiltVoiceConfig: {
-                  voiceName,
+                ],
+              },
+            ],
+            config: {
+              responseModalities: ['AUDIO'],
+              speechConfig: {
+                voiceConfig: {
+                  prebuiltVoiceConfig: {
+                    voiceName,
+                  },
                 },
               },
             },
-          },
-        });
-        inlineData = response.candidates?.[0]?.content?.parts?.[0]?.inlineData;
-        if (inlineData?.data) break;
-      } catch (err) {
-        lastError = err;
-        const errMsg = err instanceof Error ? err.message : String(err);
-        recordModelQuotaCooldown(modelName, errMsg);
-        // Only retry without speechMetadata on the same model if the error was 400 Invalid Argument (not 429 Quota)
-        if (!errMsg.includes('429') && !errMsg.includes('RESOURCE_EXHAUSTED')) {
-          try {
-            const fallbackResponse = await ai.models.generateContent({
-              model: modelName,
-              contents: text,
-              config: {
-                responseModalities: ['AUDIO'],
-                speechConfig: {
-                  voiceConfig: {
-                    prebuiltVoiceConfig: {
-                      voiceName,
+          });
+          inlineData = response.candidates?.[0]?.content?.parts?.[0]?.inlineData;
+          if (inlineData?.data) {
+            selectedModelName = modelName;
+            break;
+          }
+        } catch (err) {
+          lastError = err;
+          const errMsg = err instanceof Error ? err.message : String(err);
+          recordModelQuotaCooldown(modelName, errMsg);
+
+          // If rate-limited (429), immediately move to next model without retrying same model
+          if (errMsg.includes('429') || errMsg.includes('RESOURCE_EXHAUSTED')) {
+            break;
+          }
+
+          // If 400 Invalid Argument on speechMetadata, try once without speechMetadata
+          if (errMsg.includes('400') || errMsg.includes('INVALID_ARGUMENT')) {
+            try {
+              const fallbackResponse = await ai.models.generateContent({
+                model: modelName,
+                contents: text,
+                config: {
+                  responseModalities: ['AUDIO'],
+                  speechConfig: {
+                    voiceConfig: {
+                      prebuiltVoiceConfig: {
+                        voiceName,
+                      },
                     },
                   },
                 },
-              },
-            });
-            inlineData = fallbackResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData;
-            if (inlineData?.data) break;
-          } catch (fallbackErr) {
-            lastError = fallbackErr;
-            const fbMsg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
-            recordModelQuotaCooldown(modelName, fbMsg);
+              });
+              inlineData = fallbackResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData;
+              if (inlineData?.data) {
+                selectedModelName = modelName;
+              }
+            } catch (fallbackErr) {
+              lastError = fallbackErr;
+              const fbMsg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
+              recordModelQuotaCooldown(modelName, fbMsg);
+            }
+            break;
+          }
+
+          // Transient 5xx/network error: wait 350ms backoff before 2nd attempt
+          if (attempt === 1) {
+            await new Promise((r) => setTimeout(r, 350));
           }
         }
       }
+      if (inlineData?.data) break;
     }
   }
 
@@ -2540,6 +2700,7 @@ async function synthesizeVietnameseTtsSegment(
         sourceSampleRate: 24000,
         sourceChannels: 1,
         engineUsed: 'server-vi-fallback',
+        modelUsed: 'server-vi-fallback',
       };
     }
     throw new Error(
@@ -2564,6 +2725,7 @@ async function synthesizeVietnameseTtsSegment(
     sourceSampleRate: parsed.sourceSampleRate,
     sourceChannels: parsed.sourceChannels,
     engineUsed: 'gemini-tts',
+    modelUsed: selectedModelName,
   };
 }
 

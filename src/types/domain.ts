@@ -7,6 +7,10 @@
 
 export type VoiceGender = 'female' | 'male';
 
+export type FemaleVoiceId = 'Leda' | 'Zephyr';
+
+export type VoiceStyleMode = 'companion' | 'storytelling' | 'celebration';
+
 export type VoiceContextType =
   | 'greeting'
   | 'chat'
@@ -17,6 +21,7 @@ export type VoiceContextType =
 
 export interface VoicePreference {
   gender: VoiceGender;
+  femaleVoiceId?: FemaleVoiceId; // 'Leda' (primary test candidate) or 'Zephyr' (comparison candidate)
   volume: number; // 0.0 to 1.0
   muted: boolean;
   speechRate: number; // 0.85 to 1.15

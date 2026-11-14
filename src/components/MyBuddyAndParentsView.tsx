@@ -46,7 +46,11 @@ import {
   getDefaultStorySceneCues,
   auditStorySceneIllustrations,
 } from './BuddyIllustrations';
-import { voiceService } from '../services/voiceService';
+import {
+  voiceService,
+  VIETNAMESE_VOICE_TEST_SUITE,
+  VOICE_QUALITY_EVALUATION_CRITERIA,
+} from '../services/voiceService';
 import {
   formatPodcastTime,
   podcastPlaybackController,
@@ -55,6 +59,7 @@ import {
 import {
   ChildCharacterVariant,
   DayOfWeekNumber,
+  FemaleVoiceId,
   GrowthExperienceItem,
   GrowthQualityTopic,
   IllustrationKey,
@@ -64,6 +69,7 @@ import {
   StoryCategory,
   Task,
   TaskStep,
+  VoiceContextType,
   VoiceGender,
 } from '../types/domain';
 import { getTodayDateKey } from '../services/pointsPolicy';
@@ -550,24 +556,55 @@ export const MyBuddySettingsView: React.FC<{ onBack?: () => void }> = ({
   } = useBuddy();
 
   const pref = data.voicePreference;
+  const currentFemaleVoice: FemaleVoiceId = pref.femaleVoiceId || 'Leda';
 
-  const handleSelectGender = async (gender: VoiceGender) => {
-    await updateVoicePreference({ gender });
+  const handleSelectGender = async (
+    gender: VoiceGender,
+    femaleVoiceId?: FemaleVoiceId
+  ) => {
+    const nextFemaleVoice: FemaleVoiceId = femaleVoiceId || currentFemaleVoice;
+    await updateVoicePreference({
+      gender,
+      femaleVoiceId: nextFemaleVoice,
+    });
     const sampleText =
       gender === 'male'
-        ? `Chào ${data.profile.displayName}! Mình là Buddy với giọng đọc Nam tươi vui. Mình sẽ đồng hành cùng bạn mỗi ngày nhé!`
-        : `${data.profile.displayName} ơi, mình đây! Hộp bút chơi trốn tìm rồi. À, dưới quyển vở kìa! Mình lấy ra nhé.`;
+        ? `Chào ${data.profile.displayName}! Mình là Buddy với giọng đọc Nam Puck tươi vui. Mình sẽ đồng hành cùng bạn mỗi ngày nhé!`
+        : nextFemaleVoice === 'Leda'
+        ? `${data.profile.displayName} ơi, mình là Buddy giọng Leda đây! Hôm nay chúng mình cùng khám phá những điều thú vị nhé.`
+        : `${data.profile.displayName} ơi, mình là Buddy giọng Zephyr đây! Hộp bút chơi trốn tìm rồi. À, dưới quyển vở kìa! Mình lấy ra nhé.`;
     voiceService.speak(
       sampleText,
-      { ...pref, gender, muted: false },
+      { ...pref, gender, femaleVoiceId: nextFemaleVoice, muted: false },
       'chat'
     );
+  };
+
+  const handleAuditionSpecificVoice = (
+    voiceId: 'Leda' | 'Zephyr' | 'Puck',
+    text: string,
+    context: VoiceContextType
+  ) => {
+    voiceService.unlockAudioFromUserGesture();
+    if (voiceId === 'Puck') {
+      void voiceService.speak(
+        text,
+        { ...pref, gender: 'male', muted: false },
+        context
+      );
+    } else {
+      void voiceService.speak(
+        text,
+        { ...pref, gender: 'female', femaleVoiceId: voiceId, muted: false },
+        context
+      );
+    }
   };
 
   const handleTestVoice = () => {
     const sample =
       pref.gender === 'male'
-        ? `Xin chào ${data.profile.displayName}! Đây là giọng đọc Nam tươi vui của mình. Hôm nay bạn đã sẵn sàng thử sức cùng mình chưa nào?`
+        ? `Xin chào ${data.profile.displayName}! Đây là giọng đọc Nam Puck tươi vui của mình. Hôm nay bạn đã sẵn sàng thử sức cùng mình chưa nào?`
         : `${data.profile.displayName} ơi, mình đây! Hộp bút chơi trốn tìm rồi. À, dưới quyển vở kìa! Mình lấy ra nhé.`;
     voiceService.speak(sample, pref, 'chat');
   };
@@ -596,18 +633,18 @@ export const MyBuddySettingsView: React.FC<{ onBack?: () => void }> = ({
         />
         <div>
           <span className="inline-block text-[11px] font-bold text-[#3978F6] bg-white px-3 py-1 rounded-xl shadow-2xs">
-            1 Nhân vật Buddy duy nhất
+            Buddy v2.1 · Gemini TTS Voice Engine
           </span>
           <h1 className="font-kids text-2xl font-extrabold text-[#23324D] mt-2">
             Giọng nói của Buddy
           </h1>
-          <p className="text-xs sm:text-sm text-[#23324D]/75 mt-1 max-w-sm mx-auto leading-relaxed">
-            Chọn giọng đọc <strong>Zephyr · Cô bạn ấm áp, vui tươi</strong> hoặc <strong>Nam hoạt bát (Puck)</strong> cho bạn Buddy của {data.profile.displayName}.
+          <p className="text-xs sm:text-sm text-[#23324D]/75 mt-1 max-w-md mx-auto leading-relaxed">
+            Chọn giọng đọc Nữ (<strong>Leda</strong> hoặc <strong>Zephyr</strong>) hoặc giọng Nam (<strong>Puck</strong>) cho bạn đồng hành Buddy của {data.profile.displayName}.
           </p>
         </div>
       </section>
 
-      {/* Voice Gender Selection Cards */}
+      {/* Voice Gender & Candidate Selection Cards */}
       <section className="rounded-[24px] bg-white border border-[#23324D]/10 p-5 space-y-4 shadow-xs">
         <div>
           <h2 className="font-kids text-lg font-extrabold text-[#23324D]">
@@ -632,49 +669,88 @@ export const MyBuddySettingsView: React.FC<{ onBack?: () => void }> = ({
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          {/* Option 1: Female Voice */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+          {/* Option 1A: Female Voice Leda (Primary Test Candidate) */}
           <button
             type="button"
-            onClick={() => handleSelectGender('female')}
+            onClick={() => handleSelectGender('female', 'Leda')}
             className={`text-left rounded-[22px] p-4 border-2 transition-all cursor-pointer flex flex-col justify-between gap-3 ${
-              pref.gender === 'female'
+              pref.gender === 'female' && currentFemaleVoice === 'Leda'
                 ? 'bg-[#EAF3FF] border-[#3978F6] shadow-xs'
                 : 'bg-[#F7F9FD] border-transparent hover:border-[#3978F6]/40'
             }`}
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
+            <div className="flex items-start justify-between gap-2.5">
+              <div className="flex items-center gap-2.5">
                 <BuddyAvatar size="sm" />
                 <div>
+                  <span className="inline-block text-[10px] font-extrabold text-[#3978F6] bg-white px-2 py-0.5 rounded-md mb-0.5">
+                    Giọng Nữ · Ứng viên chính
+                  </span>
                   <h3 className="font-kids text-base font-extrabold text-[#23324D]">
-                    Zephyr · Cô bạn ấm áp, vui tươi
+                    Leda · Dịu dàng, tươi sáng
                   </h3>
-                  <p className="text-xs text-[#23324D]/75">
-                    Trẻ trung, ấm áp, vui tươi như cô bạn đồng hành của bạn nhỏ 6–8 tuổi
+                  <p className="text-xs text-[#23324D]/75 mt-0.5">
+                    Trẻ trung, dịu dàng, giàu cảm xúc khi kể chuyện và trò chuyện cùng trẻ 6–8 tuổi.
                   </p>
                 </div>
               </div>
-              {pref.gender === 'female' && (
+              {pref.gender === 'female' && currentFemaleVoice === 'Leda' && (
                 <CheckCircle2 className="w-5 h-5 text-[#3978F6] shrink-0" />
               )}
             </div>
 
             <div className="pt-2.5 border-t border-[#23324D]/8 flex items-center justify-between text-xs text-[#23324D]/70">
-              <span>
-                {voiceState.isUsingFallback && pref.gender === 'female'
-                  ? voiceState.activeAudioSourceLabel || 'Giọng Nữ dự phòng (vi-VN)'
-                  : voiceCapabilities.geminiTtsAvailable
-                  ? 'Zephyr · Cô bạn ấm áp, vui tươi'
-                  : 'Giọng Nữ dự phòng (vi-VN)'}
-              </span>
+              <span>Gemini Leda (Nữ)</span>
               <span className="font-bold text-[#3978F6]">
-                {pref.gender === 'female' ? 'Đang chọn' : 'Chọn giọng này'}
+                {pref.gender === 'female' && currentFemaleVoice === 'Leda'
+                  ? 'Đang chọn'
+                  : 'Chọn Leda'}
               </span>
             </div>
           </button>
 
-          {/* Option 2: Male Voice */}
+          {/* Option 1B: Female Voice Zephyr (Comparison Candidate) */}
+          <button
+            type="button"
+            onClick={() => handleSelectGender('female', 'Zephyr')}
+            className={`text-left rounded-[22px] p-4 border-2 transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+              pref.gender === 'female' && currentFemaleVoice === 'Zephyr'
+                ? 'bg-[#EAF3FF] border-[#3978F6] shadow-xs'
+                : 'bg-[#F7F9FD] border-transparent hover:border-[#3978F6]/40'
+            }`}
+          >
+            <div className="flex items-start justify-between gap-2.5">
+              <div className="flex items-center gap-2.5">
+                <BuddyAvatar size="sm" />
+                <div>
+                  <span className="inline-block text-[10px] font-extrabold text-indigo-700 bg-white px-2 py-0.5 rounded-md mb-0.5">
+                    Giọng Nữ · Đối chiếu
+                  </span>
+                  <h3 className="font-kids text-base font-extrabold text-[#23324D]">
+                    Zephyr · Rõ chữ, ấm áp
+                  </h3>
+                  <p className="text-xs text-[#23324D]/75 mt-0.5">
+                    Phát âm rõ ràng, ấm áp, thân thiện và tự nhiên trong hướng dẫn hằng ngày.
+                  </p>
+                </div>
+              </div>
+              {pref.gender === 'female' && currentFemaleVoice === 'Zephyr' && (
+                <CheckCircle2 className="w-5 h-5 text-[#3978F6] shrink-0" />
+              )}
+            </div>
+
+            <div className="pt-2.5 border-t border-[#23324D]/8 flex items-center justify-between text-xs text-[#23324D]/70">
+              <span>Gemini Zephyr (Nữ)</span>
+              <span className="font-bold text-[#3978F6]">
+                {pref.gender === 'female' && currentFemaleVoice === 'Zephyr'
+                  ? 'Đang chọn'
+                  : 'Chọn Zephyr'}
+              </span>
+            </div>
+          </button>
+
+          {/* Option 2: Male Voice Puck */}
           <button
             type="button"
             onClick={() => handleSelectGender('male')}
@@ -684,15 +760,18 @@ export const MyBuddySettingsView: React.FC<{ onBack?: () => void }> = ({
                 : 'bg-[#F7F9FD] border-transparent hover:border-[#3978F6]/40'
             }`}
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
+            <div className="flex items-start justify-between gap-2.5">
+              <div className="flex items-center gap-2.5">
                 <BuddyAvatar size="sm" />
                 <div>
+                  <span className="inline-block text-[10px] font-extrabold text-emerald-800 bg-white px-2 py-0.5 rounded-md mb-0.5">
+                    Giọng Nam · Chuẩn AI
+                  </span>
                   <h3 className="font-kids text-base font-extrabold text-[#23324D]">
-                    Giọng Nam ấm áp (Puck)
+                    Puck · Nam hoạt bát
                   </h3>
-                  <p className="text-xs text-[#23324D]/75">
-                    Trầm ấm, rõ ràng và vui tươi
+                  <p className="text-xs text-[#23324D]/75 mt-0.5">
+                    Vui vẻ, năng động, phát âm tròn vành rõ chữ và ấm áp.
                   </p>
                 </div>
               </div>
@@ -702,15 +781,9 @@ export const MyBuddySettingsView: React.FC<{ onBack?: () => void }> = ({
             </div>
 
             <div className="pt-2.5 border-t border-[#23324D]/8 flex items-center justify-between text-xs text-[#23324D]/70">
-              <span>
-                {voiceState.isUsingFallback && pref.gender === 'male'
-                  ? voiceState.activeAudioSourceLabel || 'Giọng Nam dự phòng (vi-VN)'
-                  : voiceCapabilities.geminiTtsAvailable
-                  ? 'Gemini Puck (Chuẩn AI)'
-                  : 'Giọng Nam dự phòng (vi-VN)'}
-              </span>
+              <span>Gemini Puck (Nam)</span>
               <span className="font-bold text-[#3978F6]">
-                {pref.gender === 'male' ? 'Đang chọn' : 'Chọn giọng này'}
+                {pref.gender === 'male' ? 'Đang chọn' : 'Chọn Puck'}
               </span>
             </div>
           </button>
@@ -726,7 +799,7 @@ export const MyBuddySettingsView: React.FC<{ onBack?: () => void }> = ({
                 className="min-h-[42px] px-4 py-2 rounded-[16px] bg-[#3978F6] hover:bg-[#2964DF] text-white font-kids font-bold text-xs sm:text-sm inline-flex items-center gap-1.5 cursor-pointer"
               >
                 <Volume2 className="w-4 h-4" />
-                <span>Nghe thử giọng đã chọn</span>
+                <span>Nghe thử giọng đang chọn</span>
               </button>
 
               <button
@@ -804,6 +877,130 @@ export const MyBuddySettingsView: React.FC<{ onBack?: () => void }> = ({
               />
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Part I & Part VI: Vietnamese Pronunciation & 3-Mode Voice Comparison Suite (Leda vs Zephyr vs Puck) */}
+      <section className="rounded-[24px] bg-white border border-[#23324D]/10 p-5 space-y-4 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <span className="text-[11px] font-kids font-extrabold text-[#3978F6] uppercase">
+              Bộ kiểm thử phát âm tiếng Việt & 3 chế độ ngữ cảnh (v2.1)
+            </span>
+            <h2 className="font-kids text-lg font-extrabold text-[#23324D]">
+              Nghe thử & đối chiếu Leda · Zephyr · Puck
+            </h2>
+          </div>
+          <span className="text-xs font-bold text-[#5C6F8C]">
+            Cùng một văn bản · 3 chế độ biểu cảm
+          </span>
+        </div>
+
+        {/* 4 Weighted Voice Quality Criteria */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+          {VOICE_QUALITY_EVALUATION_CRITERIA.map((crit) => (
+            <div
+              key={crit.priority}
+              className="rounded-[18px] bg-[#F7F9FD] border border-[#23324D]/8 p-3 space-y-1"
+            >
+              <div className="flex items-center justify-between gap-1.5">
+                <span className="text-[11px] font-kids font-extrabold text-[#3978F6]">
+                  Ưu tiên {crit.priority}
+                </span>
+                <span className="px-2 py-0.5 rounded-lg bg-[#EAF3FF] text-[#23324D] font-kids font-extrabold text-[11px] tabular-nums">
+                  {crit.weightPercent}%
+                </span>
+              </div>
+              <p className="font-kids font-extrabold text-xs text-[#23324D]">
+                {crit.title}
+              </p>
+              <p className="text-[11px] text-[#23324D]/70 leading-relaxed">
+                {crit.description}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* 4 Interactive Test Cases */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+          {VIETNAMESE_VOICE_TEST_SUITE.map((testCase) => (
+            <div
+              key={testCase.id}
+              className="rounded-[20px] bg-[#F7F9FD] border border-[#23324D]/10 p-4 flex flex-col justify-between gap-3"
+            >
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <span className="px-2.5 py-0.5 rounded-lg bg-[#EAF3FF] text-[#3978F6] font-kids font-extrabold text-[11px]">
+                    {testCase.groupLabel}
+                  </span>
+                  <span className="text-[11px] font-bold text-[#5C6F8C]">
+                    Mode: {testCase.mode}
+                  </span>
+                </div>
+                <h3 className="font-kids font-extrabold text-sm text-[#23324D]">
+                  {testCase.title}
+                </h3>
+                <p className="text-xs text-[#23324D]/85 bg-white rounded-xl p-3 border border-[#23324D]/8 leading-relaxed">
+                  “{testCase.sampleText}”
+                </p>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {testCase.focusWords.map((w) => (
+                    <span
+                      key={w}
+                      className="px-2 py-0.5 rounded-md bg-[#FFF0C9]/80 text-[#23324D] text-[10px] font-bold"
+                    >
+                      {w}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-2.5 border-t border-[#23324D]/8 flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleAuditionSpecificVoice(
+                      'Leda',
+                      testCase.sampleText,
+                      testCase.context
+                    )
+                  }
+                  className="min-h-[34px] px-3 py-1.5 rounded-[14px] bg-[#3978F6] hover:bg-[#2964DF] text-white font-kids font-extrabold text-xs inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Volume2 className="w-3.5 h-3.5" />
+                  <span>Nghe Leda</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleAuditionSpecificVoice(
+                      'Zephyr',
+                      testCase.sampleText,
+                      testCase.context
+                    )
+                  }
+                  className="min-h-[34px] px-3 py-1.5 rounded-[14px] bg-indigo-600 hover:bg-indigo-700 text-white font-kids font-extrabold text-xs inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Volume2 className="w-3.5 h-3.5" />
+                  <span>Nghe Zephyr</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleAuditionSpecificVoice(
+                      'Puck',
+                      testCase.sampleText,
+                      testCase.context
+                    )
+                  }
+                  className="min-h-[34px] px-3 py-1.5 rounded-[14px] bg-white hover:bg-[#EAF3FF] border border-[#23324D]/15 text-[#23324D] font-kids font-extrabold text-xs inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Volume2 className="w-3.5 h-3.5 text-[#3978F6]" />
+                  <span>Nghe Puck</span>
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 

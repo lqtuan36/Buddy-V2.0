@@ -26,7 +26,9 @@ export type PodcastErrorCategory =
   | null;
 
 export interface PodcastPlaybackSnapshot {
+  sessionId: string | null;
   storyId: string | null;
+  voiceId: string | null;
   status: PodcastPlayerStatus;
   audioStatus: PodcastAudioStatus;
   audioUrl: string | null;
@@ -42,6 +44,8 @@ export interface PodcastPlaybackSnapshot {
   sceneOffsetSec: number;
   sceneTimeline: StorySceneCue[];
   engineMode: 'server-continuous-wav' | 'browser-continuous-timeline';
+  geminiCallsInSession: number;
+  geminiCallsDuringPlaybackControls: number;
   errorCategory: PodcastErrorCategory;
   errorMessage: string | null;
 }
@@ -88,8 +92,19 @@ function buildDefaultSceneTimeline(
   });
 }
 
+function base64ToWavBlob(base64: string, mimeType = 'audio/wav'): Blob {
+  const binary = window.atob(base64);
+  const len = binary.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return new Blob([bytes.buffer as ArrayBuffer], { type: mimeType });
+}
+
 class PodcastPlaybackController {
   private audioElement: HTMLAudioElement | null = null;
+  private activeSessionObjectUrl: string | null = null;
   private subscribers: Set<PodcastSubscriber> = new Set();
   private activeStory: Story | null = null;
   private abortController: AbortController | null = null;
@@ -99,7 +114,9 @@ class PodcastPlaybackController {
   private sessionToken = 0;
 
   private snapshot: PodcastPlaybackSnapshot = {
+    sessionId: null,
     storyId: null,
+    voiceId: 'Leda',
     status: 'idle',
     audioStatus: 'none',
     audioUrl: null,
@@ -115,6 +132,8 @@ class PodcastPlaybackController {
     sceneOffsetSec: 0,
     sceneTimeline: [],
     engineMode: 'server-continuous-wav',
+    geminiCallsInSession: 0,
+    geminiCallsDuringPlaybackControls: 0,
     errorCategory: null,
     errorMessage: null,
   };
@@ -180,9 +199,12 @@ class PodcastPlaybackController {
   }
 
   /**
-   * Loads and prepares a continuous Podcast Episode for the given story and voice preference.
-   * Checks cached episode audio on the server (including disk existence after server restart)
-   * or synthesizes the full continuous WAV episode.
+   * Part IV – Session-Based Podcast Engine (Generate Once Per Session):
+   * - Synthesizes the story episode once when a listening session opens.
+   * - Creates a session-scoped Blob + URL.createObjectURL(blob) in browser memory.
+   * - Never reuses stale recordings from previous sessions and never writes audio to localStorage.
+   * - Play, Pause, Resume, Seek, Skip, Playback Rate, Volume/Mute, and Replay within the session
+   *   reuse the in-memory ObjectURL with 0 additional Gemini TTS requests.
    */
   public async loadEpisode(
     story: Story,
@@ -209,7 +231,11 @@ class PodcastPlaybackController {
 
     this.sessionToken += 1;
     const token = this.sessionToken;
+    const sessionId = `podcast-session-${Date.now()}-${token}`;
     this.activeStory = story;
+
+    const targetFemaleVoice = preference.femaleVoiceId || 'Leda';
+    const targetVoiceId = preference.gender === 'male' ? 'Puck' : targetFemaleVoice;
 
     const initialTimeline = buildDefaultSceneTimeline(story, fallbackSceneUrls);
     const estDuration =
@@ -227,11 +253,13 @@ class PodcastPlaybackController {
       : 1.0;
 
     this.snapshot = {
+      sessionId,
       storyId: story.id,
+      voiceId: targetVoiceId,
       status: 'generating',
       audioStatus: 'generating',
-      audioUrl: story.audioUrl || null,
-      audioAssetId: story.audioAssetId || null,
+      audioUrl: null,
+      audioAssetId: null,
       currentTimeSec: startAtSec,
       durationSec: estDuration,
       bufferedSec: 0,
@@ -243,6 +271,8 @@ class PodcastPlaybackController {
       sceneOffsetSec: this.snapshot.sceneOffsetSec,
       sceneTimeline: initialTimeline,
       engineMode: 'server-continuous-wav',
+      geminiCallsInSession: 1,
+      geminiCallsDuringPlaybackControls: 0,
       errorCategory: null,
       errorMessage: null,
     };
@@ -252,65 +282,34 @@ class PodcastPlaybackController {
     this.abortController = abortController;
 
     try {
-      // Section A.3: If story already has a cached audioAssetId & audioUrl for the selected voiceGender,
-      // verify that the file still exists on disk after server restart before trusting localStorage!
-      const expectedVoiceName = preference.gender === 'male' ? 'Puck' : 'Zephyr';
-      if (
-        !options?.forceRegenerate &&
-        story.audioStatus === 'ready' &&
-        story.audioAssetId &&
-        story.audioAssetId.includes(expectedVoiceName) &&
-        story.audioUrl &&
-        (!story.voiceGender || story.voiceGender === preference.gender)
-      ) {
-        try {
-          const statusRes = await fetch(
-            `/api/podcast/audio-status/${encodeURIComponent(story.audioAssetId)}`,
-            { signal: abortController.signal }
-          );
-          if (statusRes.ok) {
-            const statusJson = await statusRes.json();
-            if (token !== this.sessionToken) return;
-            if (statusJson.ok && statusJson.existsOnDisk && statusJson.audioUrl) {
-              const cachedDuration =
-                Number(statusJson.actualDurationSeconds) || estDuration;
-              this.attachContinuousWavAudio(
-                statusJson.audioUrl,
-                story.audioAssetId,
-                cachedDuration,
-                initialTimeline,
-                startAtSec,
-                token,
-                Boolean(options?.autoPlay)
-              );
-              return;
-            }
-          }
-        } catch {
-          // If disk status check fails, fall through to synthesize-episode
-        }
-      }
-
       const response = await fetch('/api/podcast/synthesize-episode', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           storyId: story.id,
+          sessionId,
           title: story.title,
           paragraphs: story.paragraphs,
           moralLesson: story.moralLesson,
           gender: preference.gender,
+          femaleVoiceId: targetFemaleVoice,
+          voiceName: targetVoiceId,
           contentVersion: story.contentVersion || 1,
           sceneImages: fallbackSceneUrls.map((s) => ({
             imageUrl: s.imageUrl,
             caption: s.sceneCaption,
           })),
-          forceRegenerate: Boolean(options?.forceRegenerate),
         }),
         signal: abortController.signal,
       });
 
       if (token !== this.sessionToken) return;
+
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        // Static hosting fallback: if /api/podcast/synthesize-episode returned index.html
+        throw new Error('STATIC_HOSTING_NO_API_BACKEND');
+      }
 
       const payload = await response.json();
       if (token !== this.sessionToken) return;
@@ -336,10 +335,32 @@ class PodcastPlaybackController {
         resolvedTimeline[resolvedTimeline.length - 1]?.endTimeSec ||
         estDuration;
 
-      if (response.ok && payload.ok && payload.audioUrl && payload.audioStatus === 'ready') {
+      if (
+        response.ok &&
+        payload.ok &&
+        payload.audioStatus === 'ready' &&
+        (payload.audioBase64 || payload.audioUrl)
+      ) {
+        let sessionAudioUrl: string;
+        if (payload.audioBase64) {
+          const wavBlob = base64ToWavBlob(
+            payload.audioBase64,
+            payload.mimeType || 'audio/wav'
+          );
+          sessionAudioUrl = URL.createObjectURL(wavBlob);
+          this.activeSessionObjectUrl = sessionAudioUrl;
+        } else {
+          sessionAudioUrl = payload.audioUrl;
+        }
+
+        this.snapshot = {
+          ...this.snapshot,
+          voiceId: payload.voiceId || targetVoiceId,
+        };
+
         this.attachContinuousWavAudio(
-          payload.audioUrl,
-          payload.audioAssetId,
+          sessionAudioUrl,
+          payload.audioAssetId || sessionId,
           resolvedDuration,
           resolvedTimeline,
           startAtSec,
@@ -349,20 +370,18 @@ class PodcastPlaybackController {
 
         if (options?.onEpisodeMetadataReady) {
           options.onEpisodeMetadataReady({
-            audioAssetId: payload.audioAssetId,
-            audioUrl: payload.audioUrl,
+            audioAssetId: payload.audioAssetId || sessionId,
             audioStatus: 'ready',
             actualDurationSeconds: resolvedDuration,
             sceneTimeline: resolvedTimeline,
-            voiceId: payload.voiceId,
+            voiceId: payload.voiceId || targetVoiceId,
             voiceGender: preference.gender,
           });
         }
         return;
       }
 
-      // CRITICAL RULE (Section A.3): Never fake/simulate a playing state when real audio is unavailable!
-      // Surface a clear error state and classification.
+      // CRITICAL RULE (Part VII): Never fake/simulate a playing state when real audio is unavailable!
       this.snapshot = {
         ...this.snapshot,
         status: 'error',
@@ -377,7 +396,7 @@ class PodcastPlaybackController {
         errorMessage:
           payload.reason ||
           payload.error ||
-          'Không thể tạo âm thanh cho tập Podcast này. Vui lòng bấm "Thử lại" để tạo lại âm thanh.',
+          'Ôi, mình chưa kể được truyện lúc này. Bạn thử lại cùng mình nhé!',
       };
       this.notify();
 
@@ -399,7 +418,7 @@ class PodcastPlaybackController {
         engineMode: 'server-continuous-wav',
         errorCategory: 'timeout',
         errorMessage:
-          'Không thể kết nối bộ tạo âm thanh Podcast. Vui lòng kiểm tra kết nối và bấm "Thử lại".',
+          'Ôi, mình chưa kể được truyện lúc này. Bạn thử lại cùng mình nhé!',
       };
       this.notify();
     }
@@ -955,6 +974,16 @@ class PodcastPlaybackController {
       }
       this.audioElement = null;
     }
+
+    // Part IV.4: Revoke session ObjectURL immediately on cleanup/story switch so browser memory never leaks
+    if (this.activeSessionObjectUrl) {
+      try {
+        URL.revokeObjectURL(this.activeSessionObjectUrl);
+      } catch {
+        // Ignore revoke error
+      }
+      this.activeSessionObjectUrl = null;
+    }
   }
 
   public stopAndCleanup(): void {
@@ -963,8 +992,10 @@ class PodcastPlaybackController {
     this.activeStory = null;
     this.snapshot = {
       ...this.snapshot,
+      sessionId: null,
       storyId: null,
       status: 'idle',
+      audioUrl: null,
       currentTimeSec: 0,
     };
     this.notify();

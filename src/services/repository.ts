@@ -379,6 +379,8 @@ export class LocalDemoRepository implements IDataRepository {
         voicePreference: {
           ...seed.voicePreference,
           ...(parsed.voicePreference || {}),
+          femaleVoiceId:
+            parsed.voicePreference?.femaleVoiceId === 'Zephyr' ? 'Zephyr' : 'Leda',
         },
         pointsPolicy: {
           ...seed.pointsPolicy,
@@ -434,11 +436,6 @@ export class LocalDemoRepository implements IDataRepository {
                   st.sourceType === 'builtin' &&
                   Boolean(seedStory) &&
                   !hasParentStoryEdit;
-                const hasOfficialV21VoiceAsset =
-                  typeof st.audioAssetId === 'string' &&
-                  (st.audioAssetId.includes('_Puck_') ||
-                    st.audioAssetId.includes('_Zephyr_') ||
-                    st.audioAssetId.includes('_Leda_v23f_'));
                 return {
                   ...st,
                   title: isUnmodifiedBuiltin && seedStory ? seedStory.title : st.title,
@@ -462,15 +459,10 @@ export class LocalDemoRepository implements IDataRepository {
                   orderIndex: st.orderIndex ?? idx,
                   approvalStatus:
                     st.approvalStatus ?? (st.approvedByParent ? 'approved' : 'draft'),
-                  audioAssetId: hasOfficialV21VoiceAsset ? st.audioAssetId : undefined,
-                  audioUrl: hasOfficialV21VoiceAsset ? st.audioUrl : undefined,
-                  audioStatus: !hasOfficialV21VoiceAsset
-                    ? 'none'
-                    : st.audioStatus === 'generating' || st.audioStatus === 'failed'
-                    ? st.audioUrl
-                      ? 'ready'
-                      : 'none'
-                    : st.audioStatus ?? (st.audioUrl ? 'ready' : 'none'),
+                  // Part IV.4: Never persist audio files or session URLs in localStorage
+                  audioAssetId: undefined,
+                  audioUrl: undefined,
+                  audioStatus: 'none',
                 };
               })
             : seed.stories.map((st, idx) => ({

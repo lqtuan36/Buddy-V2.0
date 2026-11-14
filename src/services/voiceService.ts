@@ -1,10 +1,115 @@
-import { VoiceContextType, VoiceGender, VoicePreference } from '../types/domain';
+import {
+  FemaleVoiceId,
+  VoiceContextType,
+  VoiceGender,
+  VoicePreference,
+  VoiceStyleMode,
+} from '../types/domain';
 import { toBuddyCompanionVoiceText } from './buddyCompanionLanguage';
 
 export type VoiceEngineMode =
   | 'gemini-server-tts'
   | 'browser-speech-synthesis'
   | 'text-fallback';
+
+/**
+ * Part I.1 – Mandatory Weighted Voice Quality Evaluation Hierarchy
+ */
+export const VOICE_QUALITY_EVALUATION_CRITERIA = [
+  {
+    priority: 1,
+    weightPercent: 40,
+    title: 'Phát âm tiếng Việt chính xác (40%)',
+    description:
+      'Rõ âm đầu, âm chính, âm cuối; giữ đúng dấu thanh tiếng Việt; xử lý tự nhiên tên riêng, chữ số và từ viết tắt.',
+  },
+  {
+    priority: 2,
+    weightPercent: 30,
+    title: 'Ngữ điệu và nhịp nói (30%)',
+    description:
+      'Ngắt nghỉ đúng nghĩa câu, nhấn nhẹ từ quan trọng, thay đổi cảm xúc vừa phải, không đọc đều đều máy móc.',
+  },
+  {
+    priority: 3,
+    weightPercent: 20,
+    title: 'Độ rõ chữ khi nghe liên tục (20%)',
+    description:
+      'Trẻ 6–8 tuổi nghe dễ hiểu ở tốc độ bình thường, không gây mệt tai khi nghe câu chuyện 1–3 phút.',
+  },
+  {
+    priority: 4,
+    weightPercent: 10,
+    title: 'Màu giọng thân thiện đồng hành (10%)',
+    description:
+      'Ấm áp, tươi sáng, xưng mình – gọi bạn tự nhiên như người bạn nhỏ đáng tin cậy.',
+  },
+] as const;
+
+/**
+ * Part VI.2 – Built-in Vietnamese Pronunciation & 3-Mode Voice Test Suite
+ */
+export interface VietnameseVoiceTestCase {
+  id: string;
+  groupLabel: string;
+  mode: VoiceStyleMode;
+  context: VoiceContextType;
+  title: string;
+  sampleText: string;
+  focusWords: string[];
+}
+
+export const VIETNAMESE_VOICE_TEST_SUITE: VietnameseVoiceTestCase[] = [
+  {
+    id: 'test-pronunciation-tones',
+    groupLabel: 'Nhóm 1 · Phát âm & Dấu thanh (40%)',
+    mode: 'companion',
+    context: 'guide',
+    title: 'Từ dễ phát âm sai & thanh hỏi/ngã',
+    sampleText:
+      'Bạn ơi, mình cùng đọc rõ từng từ nhé: quyển truyện, dũng cảm, nghĩ ngợi, ngã xuống, uống sữa, giữ gìn, nói lời cảm ơn và chuẩn bị cặp sách gọn gàng!',
+    focusWords: [
+      'quyển truyện',
+      'dũng cảm',
+      'nghĩ ngợi',
+      'ngã xuống',
+      'sữa',
+      'giữ gìn',
+      'cảm ơn',
+      'chuẩn bị cặp sách',
+    ],
+  },
+  {
+    id: 'test-mode-companion',
+    groupLabel: 'Nhóm 2 · Mode 1 – Companion (Hướng dẫn)',
+    mode: 'companion',
+    context: 'guide',
+    title: 'Câu hướng dẫn ngắn cho trẻ 6–8 tuổi',
+    sampleText:
+      'Bạn ơi! Mình cùng nhìn lên bàn học xem những chiếc bút đang nằm ở đâu nhé. Bạn gom từng chiếc bút rồi cắm gọn vào ống đựng nào!',
+    focusWords: ['nhìn lên bàn học', 'gom từng chiếc bút', 'ống đựng'],
+  },
+  {
+    id: 'test-mode-storytelling',
+    groupLabel: 'Nhóm 3 · Mode 2 – Storytelling (Kể chuyện)',
+    mode: 'storytelling',
+    context: 'story',
+    title: 'Đoạn kể chuyện giàu cảm xúc trước giờ ngủ',
+    sampleText:
+      'Chiều hôm ấy, chú sẻ nhỏ đứng dưới mái hiên nghe tiếng mưa rơi tí tách. Chú nghĩ ngợi một lát rồi dũng cảm vỗ cánh bay về phía tổ ấm trên cành cây cao, nơi mẹ đang dịu dàng chờ đón.',
+    focusWords: ['mưa rơi tí tách', 'nghĩ ngợi', 'dũng cảm vỗ cánh', 'dịu dàng'],
+  },
+  {
+    id: 'test-mode-celebration',
+    groupLabel: 'Nhóm 4 · Mode 3 – Celebration (Chúc mừng)',
+    mode: 'celebration',
+    context: 'celebration',
+    title: 'Lời khen ngợi khi hoàn thành nhiệm vụ',
+    sampleText:
+      'Hoan hô! Góc học tập của bạn đã gọn gàng và sáng bừng lên rồi. Mình đập tay ăn mừng chiến thắng nhỏ hôm nay nhé!',
+    focusWords: ['Hoan hô', 'gọn gàng', 'sáng bừng', 'ăn mừng'],
+  },
+];
 
 /**
  * UnifiedVoiceService State Machine:
@@ -23,6 +128,7 @@ export interface VoicePlaybackState {
   status: VoicePlaybackStatus;
   activeEngine: VoiceEngineMode;
   activeGender: VoiceGender;
+  activeVoiceId?: 'Puck' | 'Leda' | 'Zephyr' | string;
   lastSpokenText: string;
   currentUtteranceId: string | null;
   statusMessage: string;
@@ -51,21 +157,52 @@ const SILENT_UNLOCK_WAV_URI =
   'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
 
 /**
- * Normalizes Vietnamese text before TTS playback so numbers, symbols, dates, and abbreviations
- * are spoken naturally in 100% Vietnamese without English symbol pronunciations.
+ * Part VI.1 – Vietnamese Text Preprocessor before sending to Gemini TTS.
+ * Strips Markdown/HTML, expands abbreviations & measurement units, normalizes pauses,
+ * and preserves 100% of Vietnamese tone marks and proper names.
  */
 export function normalizeVietnameseTextForTts(rawText: string): string {
   if (!rawText) return '';
-  return rawText
-    .replace(/★/g, ' ngôi sao ')
-    .replace(/\+\s*(\d+)\s*ngôi sao/gi, 'cộng $1 ngôi sao')
-    .replace(/\+\s*(\d+)/g, 'cộng $1 ')
-    .replace(/(\d+)\s*\/\s*(\d+)/g, '$1 trên $2')
-    .replace(/\bVD:/gi, 'Ví dụ:')
-    .replace(/\bAI\b/g, 'ây ai')
-    .replace(/[•·]/g, ', ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return (
+    rawText
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/__([^_]+)__/g, '$1')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/^#{1,6}\s+/gm, '')
+      .replace(/★/g, ' ngôi sao ')
+      .replace(/\+\s*(\d+)\s*ngôi sao/gi, 'cộng $1 ngôi sao')
+      .replace(/\+\s*(\d+)/g, 'cộng $1 ')
+      .replace(/(\d+)\s*\/\s*(\d+)/g, '$1 trên $2')
+      .replace(/(\d+)\s*%/g, '$1 phần trăm')
+      .replace(/\bTKB\b/g, 'thời khóa biểu')
+      .replace(/\bCLB\b/g, 'câu lạc bộ')
+      .replace(/\bSGK\b/g, 'sách giáo khoa')
+      .replace(/\bVD\s*:/gi, 'Ví dụ:')
+      .replace(/\bTP\.\s*/g, 'Thành phố ')
+      .replace(/\bGV\b/g, 'giáo viên')
+      .replace(/\bHS\b/g, 'học sinh')
+      .replace(/\bBT\b/g, 'bài tập')
+      .replace(/\bAI\b/g, 'ây ai')
+      .replace(/(\d+)\s*kg\b/gi, '$1 ki-lô-gam')
+      .replace(/(\d+)\s*cm\b/gi, '$1 xăng-ti-mét')
+      .replace(/(\d+)\s*mm\b/gi, '$1 mi-li-mét')
+      .replace(/(\d+)\s*km\b/gi, '$1 ki-lô-mét')
+      .replace(/(\d+)\s*ml\b/gi, '$1 mi-li-lít')
+      .replace(/(\d+)\s*m\b/gi, '$1 mét')
+      .replace(/(\d+)\s*g\b/gi, '$1 gam')
+      .replace(/(\d+)\s*l\b/gi, '$1 lít')
+      .replace(/[•·]/g, ', ')
+      .replace(/[→⇒—–]/g, ', ')
+      .replace(/\.{2,}|…+/g, '. ')
+      .replace(/!{2,}/g, '!')
+      .replace(/\?{2,}/g, '?')
+      .replace(/\s+([,.;!?])/g, '$1')
+      .replace(/([,.;!?])(?=[A-Za-zÀ-ỹ])/g, '$1 ')
+      .replace(/\s+/g, ' ')
+      .trim()
+  );
 }
 
 function createWavBlobFromPcm(
@@ -294,8 +431,8 @@ class UnifiedVoiceService {
     }
 
     if (this.capabilities.geminiTtsAvailable) {
-      this.capabilities.voiceAvailabilityNote =
-        'Đang dùng giọng AI Gemini tiếng Việt: Zephyr · Cô bạn ấm áp, vui tươi (Nữ) & Puck · Cậu bạn hoạt bát (Nam).';
+      const femVoice: FemaleVoiceId = this.lastPref?.femaleVoiceId || 'Leda';
+      this.capabilities.voiceAvailabilityNote = `Đang dùng giọng AI Gemini tiếng Việt: ${femVoice} · Cô bạn dịu dàng, tươi sáng (Nữ) & Puck · Cậu bạn hoạt bát (Nam).`;
       return;
     }
 
@@ -536,9 +673,12 @@ class UnifiedVoiceService {
     // Apply companion "mình - bạn" language normalization ONLY for non-story Buddy utterances
     const cleanText = toBuddyCompanionVoiceText(rawCleanText, context);
 
-    // Duplicate-request lock: if the exact same text & gender was triggered within 450ms and is already loading/playing, ignore duplicate tap
+    const targetFemaleVoice: FemaleVoiceId = preference.femaleVoiceId || 'Leda';
+    const targetVoiceName = preference.gender === 'male' ? 'Puck' : targetFemaleVoice;
+
+    // Duplicate-request lock: if the exact same text & voice was triggered within 450ms and is already loading/playing, ignore duplicate tap
     const now = Date.now();
-    const signature = `${preference.gender}:${context}:${cleanText}`;
+    const signature = `${preference.gender}:${targetVoiceName}:${context}:${cleanText}`;
     if (
       signature === this.lastRequestSignature &&
       now - this.lastRequestTimestamp < 450 &&
@@ -566,6 +706,7 @@ class UnifiedVoiceService {
         status: 'idle',
         activeEngine: 'text-fallback',
         activeGender: preference.gender,
+        activeVoiceId: targetVoiceName,
         lastSpokenText: cleanText,
         currentUtteranceId: null,
         statusMessage: 'Đang tắt âm thanh (Chế độ đọc chữ).',
@@ -577,18 +718,17 @@ class UnifiedVoiceService {
       return { ok: true };
     }
 
-    // 2. Primary Path: Server-side TTS (/api/tts with Gemini Puck / Zephyr + server WAV fallback)
-    // CRITICAL FIX: Always call /api/tts when preferServerTts !== false; never let a prior fallback
-    // response permanently disable /api/tts for subsequent steps!
+    // 2. Primary Path: Server-side TTS (/api/tts with Gemini Puck / Leda / Zephyr + server WAV fallback)
     if (preference.preferServerTts !== false) {
       this.state = {
         status: 'loading',
         activeEngine: 'gemini-server-tts',
         activeGender: preference.gender,
+        activeVoiceId: targetVoiceName,
         lastSpokenText: cleanText,
         currentUtteranceId: utteranceId,
         statusMessage: `Đang chuẩn bị giọng ${
-          preference.gender === 'male' ? 'Nam (Puck)' : 'Nữ (Zephyr)'
+          preference.gender === 'male' ? 'Nam (Puck)' : `Nữ (${targetFemaleVoice})`
         } của Buddy...`,
         autoplayBlocked: false,
         lastErrorType: null,
@@ -719,12 +859,18 @@ class UnifiedVoiceService {
     'played' | 'autoplay_blocked' | 'failed_before_play' | 'failed_after_play' | 'superseded'
   > {
     try {
+      const targetFemaleVoice: FemaleVoiceId = preference.femaleVoiceId || 'Leda';
+      const requestedVoiceName =
+        preference.gender === 'male' ? 'Puck' : targetFemaleVoice;
+
       const response = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: normalizedText,
           gender: preference.gender,
+          femaleVoiceId: targetFemaleVoice,
+          voiceName: requestedVoiceName,
           context,
         }),
         signal,
@@ -732,6 +878,12 @@ class UnifiedVoiceService {
 
       if (token !== this.activeUtteranceToken || signal.aborted) return 'superseded';
       if (!response.ok) return 'failed_before_play';
+
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        // Static hosting (e.g., Firebase Hosting without backend Cloud Run rewrite) returned index.html
+        return 'failed_before_play';
+      }
 
       const payload = await response.json();
       if (token !== this.activeUtteranceToken || signal.aborted) return 'superseded';
@@ -869,10 +1021,15 @@ class UnifiedVoiceService {
           this.isAudioUnlocked = true;
           hasStartedPlaying = true;
           const usedFallback = Boolean(payload?.isFallback);
+          const actualVoiceName =
+            payload?.requestedVoiceName ||
+            (preference.gender === 'male' ? 'Puck' : preference.femaleVoiceId || 'Leda');
           const officialVoiceLabel =
             preference.gender === 'male'
               ? 'Puck · Cậu bạn hoạt bát'
-              : 'Zephyr · Cô bạn ấm áp, vui tươi';
+              : actualVoiceName === 'Leda'
+              ? 'Leda · Cô bạn dịu dàng, tươi sáng'
+              : 'Zephyr · Cô bạn ấm áp, rõ chữ';
           const sourceLabel = usedFallback
             ? `Giọng tiếng Việt dự phòng trên máy chủ (vi-VN · ${
                 preference.gender === 'male' ? 'Nam' : 'Nữ'
@@ -883,6 +1040,7 @@ class UnifiedVoiceService {
             status: 'playing',
             activeEngine: usedFallback ? 'browser-speech-synthesis' : 'gemini-server-tts',
             activeGender: preference.gender,
+            activeVoiceId: usedFallback ? `vi-VN-${preference.gender}-fallback` : actualVoiceName,
             lastSpokenText: this.state.lastSpokenText,
             currentUtteranceId: utteranceId,
             isUsingFallback: usedFallback,

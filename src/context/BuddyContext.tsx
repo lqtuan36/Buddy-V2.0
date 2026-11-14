@@ -1768,20 +1768,31 @@ export const BuddyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             paragraphs: targetStory.paragraphs,
             moralLesson: targetStory.moralLesson,
             gender: data.voicePreference.gender,
+            femaleVoiceId: data.voicePreference.femaleVoiceId || 'Leda',
             baseSpeed: 1,
             contentVersion: nextContentVersion,
             sceneCues: sceneCuesPayload,
           }),
         });
 
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+          throw new Error('STATIC_HOSTING_NO_API_BACKEND');
+        }
+
         const payload = await res.json();
-        if (res.ok && payload.audioStatus === 'ready' && payload.audioUrl) {
+        if (
+          res.ok &&
+          payload.audioStatus === 'ready' &&
+          (payload.audioBase64 || payload.audioUrl)
+        ) {
+          // Part IV.4: Never persist audio blobs or session audio URLs in localStorage
           const updatedStory: Story = {
             ...targetStory,
             contentVersion: nextContentVersion,
             audioStatus: 'ready',
-            audioAssetId: payload.audioAssetId,
-            audioUrl: payload.audioUrl,
+            audioAssetId: undefined,
+            audioUrl: undefined,
             actualDurationSeconds: payload.actualDurationSeconds,
             durationMinutes: Math.max(1, Math.round((payload.actualDurationSeconds || 180) / 60)),
             voiceId: payload.voiceId,
@@ -1815,8 +1826,9 @@ export const BuddyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             ok: false,
             audioStatus: 'failed',
             error:
+              payload.reason ||
               payload.message ||
-              'Máy chủ TTS chưa tạo được tệp âm thanh tập truyện. Khi phát sẽ dùng chế độ đọc liên tục trên trình duyệt.',
+              'Ôi, mình chưa kể được truyện lúc này. Bạn thử lại cùng mình nhé!',
           };
         }
       } catch {

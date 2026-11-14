@@ -455,16 +455,15 @@ export const StoryPlayerView: React.FC<{
       forceRegenerate: false,
       onEpisodeMetadataReady: (res) => {
         if (cancelled) return;
+        // Part IV.4: Only persist non-audio metadata (duration & scene timeline) to localStorage; never persist audio URLs or blobs
         if (
           res.audioStatus === 'ready' &&
-          res.audioUrl &&
-          (story.audioAssetId !== res.audioAssetId || story.audioStatus !== 'ready')
+          story.actualDurationSeconds !== res.actualDurationSeconds
         ) {
           void saveParentStory({
             ...story,
-            audioStatus: 'ready',
-            audioAssetId: res.audioAssetId,
-            audioUrl: res.audioUrl,
+            audioUrl: undefined,
+            audioAssetId: undefined,
             actualDurationSeconds: res.actualDurationSeconds,
             durationMinutes: Math.max(1, Math.round((res.actualDurationSeconds || 180) / 60)),
             voiceGender: pref.gender,
@@ -480,7 +479,7 @@ export const StoryPlayerView: React.FC<{
       voiceService.cancel();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storyId, pref.gender]);
+  }, [storyId, pref.gender, pref.femaleVoiceId]);
 
   // Persist listening progress & trigger 3 sequential post-story questions when episode reaches 'ended'
   useEffect(() => {
@@ -672,12 +671,11 @@ export const StoryPlayerView: React.FC<{
       autoPlay: true,
       forceRegenerate: true,
       onEpisodeMetadataReady: (res) => {
-        if (res.audioStatus === 'ready' && res.audioUrl) {
+        if (res.audioStatus === 'ready') {
           void saveParentStory({
             ...story,
-            audioStatus: 'ready',
-            audioAssetId: res.audioAssetId,
-            audioUrl: res.audioUrl,
+            audioUrl: undefined,
+            audioAssetId: undefined,
             actualDurationSeconds: res.actualDurationSeconds,
             sceneTimeline: res.sceneTimeline,
           });
@@ -862,7 +860,7 @@ export const StoryPlayerView: React.FC<{
 
               <div className="flex items-center gap-1.5 shrink-0">
                 <span className="px-3 py-1 rounded-[18px] bg-[#111A2E]/85 backdrop-blur-xs text-[#FFF0C9] text-[11px] sm:text-xs font-kids font-bold tabular-nums border border-white/15">
-                  Giọng {pref.gender === 'male' ? 'Nam' : 'Nữ'} · {snapshot.playbackRate}x
+                  Giọng {pref.gender === 'male' ? 'Nam (Puck)' : `Nữ (${pref.femaleVoiceId || 'Leda'})`} · {snapshot.playbackRate}x
                 </span>
               </div>
             </div>
@@ -872,7 +870,7 @@ export const StoryPlayerView: React.FC<{
               {isGenerating && (
                 <div className="px-4 py-2.5 rounded-[20px] bg-[#111A2E]/85 backdrop-blur-md border border-white/20 text-[#FFF0C9] font-kids font-extrabold text-xs sm:text-sm inline-flex items-center gap-2 shadow-lg">
                   <RefreshCw className="w-4 h-4 animate-spin text-[#3978F6]" />
-                  <span>Buddy đang chuẩn bị âm thanh tiếng Việt liên tục...</span>
+                  <span>Buddy đang chuẩn bị câu chuyện cho bạn…</span>
                 </div>
               )}
             </div>
@@ -882,13 +880,13 @@ export const StoryPlayerView: React.FC<{
               onClick={(e) => e.stopPropagation()}
               className="bg-gradient-to-t from-[#0D1526]/95 via-[#0D1526]/82 to-transparent pt-10 pb-4 px-3.5 sm:px-5 space-y-3 text-white cursor-default"
             >
-              {/* Truthful Error State Banner with Retry Button (Section A.3) */}
+              {/* Truthful Error State Banner with Retry Button (Part VII.1) */}
               {isErrorState && !isGenerating && (
                 <div className="rounded-[18px] bg-rose-950/90 border border-rose-400/50 px-3.5 py-2.5 flex items-center justify-between gap-2.5 text-xs">
                   <span className="font-kids font-bold text-rose-100 leading-snug">
                     ⚠️{' '}
                     {snapshot.errorMessage ||
-                      'Không thể phát âm thanh lúc này. Vui lòng bấm Thử lại.'}
+                      'Ôi, mình chưa kể được truyện lúc này. Bạn thử lại cùng mình nhé!'}
                   </span>
                   <button
                     type="button"
