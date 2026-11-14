@@ -2278,7 +2278,8 @@ export const ParentDashboardView: React.FC<{ onBack: () => void }> = ({ onBack }
                       </div>
                       <div>
                         <p className="font-kids font-extrabold text-xs text-[#3978F6]">
-                          Bước {idx + 1}: {st.actionTitle}
+                          Bước {idx + 1}:{' '}
+                          {st.actionTitle.replace(/^(?:Bước\s*\d+\s*[:.\-–—]\s*)+/i, '').trim()}
                         </p>
                         <p className="text-xs text-[#23324D]">{st.instruction}</p>
                       </div>

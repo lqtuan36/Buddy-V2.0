@@ -13,6 +13,7 @@ import {
   TaskStepCard,
   ResultCard,
   StepRunnerFlowPhase,
+  cleanStepActionTitle,
 } from './DesignSystem';
 import { BuddyAvatar } from './BuddyAvatar';
 import {
@@ -26,12 +27,12 @@ import { RoutinePeriod } from '../types/domain';
 const PRACTICE_COUNTDOWN_SECONDS = 10;
 
 /**
- * Interactive Single-Task Visual Step Card Runner (Buddy Guide v1.4)
- * - Auto-speaks ONLY the concise current action title in Vietnamese ("Bước 1: Xem thời khóa biểu").
+ * Interactive Single-Task Visual Step Card Runner (Buddy Guide v2.0)
+ * - Auto-speaks the 3-beat companion step guidance in Vietnamese.
  * - Starts the 10-second practice countdown ONLY after the voice actually finishes speaking.
- * - Automatically advances to the next step when the 10-second countdown reaches 0 (no per-step "Con làm xong rồi" or "Tiếp theo" buttons).
- * - Handles "Nghe lại", "Con chưa hiểu", and "Bước trước" by cleanly cancelling/resetting timers and speech without stale timeouts leaking into new steps.
- * - On the final step, displays ONE primary CTA: "Con đã hoàn thành nhiệm vụ" which records all viewed steps and calls completeTaskStepRun() once.
+ * - Automatically advances to the next step when the 10-second countdown reaches 0 on intermediate steps (no per-step confirmation buttons).
+ * - Handles "Nghe lại", "Mình chưa hiểu" (pauses auto-advance while HelpCard is open), and "Bước trước" by cleanly cancelling/resetting timers and speech without stale timeouts leaking into new steps.
+ * - On the final step, displays ONE primary CTA: "Mình làm xong rồi!" which records all steps and calls completeTaskStepRun() once.
  */
 export const BuddyTaskStepRunner: React.FC<{
   taskId: string;
@@ -120,9 +121,7 @@ export const BuddyTaskStepRunner: React.FC<{
     if (stepObj.buddySpeech && stepObj.buddySpeech.trim()) {
       return stepObj.buddySpeech.trim();
     }
-    const cleanTitle = (stepObj.actionTitle || '')
-      .replace(/^Bước\s*\d+\s*[:.-]\s*/i, '')
-      .trim();
+    const cleanTitle = cleanStepActionTitle(stepObj.actionTitle || '');
     const cleanInstruction = (stepObj.instruction || '').trim();
     const openers = [
       'Bạn ơi! Mình cùng bắt đầu bước đầu tiên nhé!',
@@ -143,12 +142,14 @@ export const BuddyTaskStepRunner: React.FC<{
 
   /**
    * Starts the 10-second practice countdown for `stepIdx` guarded by `expectedToken`.
-   * Only called AFTER Buddy's voice finishes speaking.
-   * When the 10s practice window completes, transitions to `ready_final` so the child
-   * confirms when they have actually finished the physical action (never auto-completes behind the child's back).
+   * Only called AFTER Buddy's voice finishes speaking (or when intentionally muted).
+   * - On intermediate steps (`stepIdx + 1 < totalStepsCount`): when countdown reaches 0,
+   *   records the step as viewed in `completedStepIds` and automatically advances to `stepIdx + 1`.
+   * - On the final step (`stepIdx + 1 >= totalStepsCount`): when countdown reaches 0,
+   *   transitions to `ready_final` and waits for the child to click "Mình làm xong rồi!".
    */
   const startTenSecondCountdown = useCallback(
-    (_stepIdx: number, _stepId: string, _totalStepsCount: number, expectedToken: number) => {
+    (stepIdx: number, stepId: string, totalStepsCount: number, expectedToken: number) => {
       if (flowTokenRef.current !== expectedToken) return;
       clearStepTimers();
 
@@ -167,10 +168,20 @@ export const BuddyTaskStepRunner: React.FC<{
           return;
         }
 
-        // 10s practice window reached 0: wait for child's confirmation tap
         clearStepTimers();
         setCountdownSeconds(0);
-        setFlowPhase('ready_final');
+
+        if (stepIdx + 1 < totalStepsCount) {
+          // Intermediate step: mark step progress and auto-advance to next step without calling completeTaskStepRun()
+          setCompletedStepIds((prev) =>
+            prev.includes(stepId) ? prev : [...prev, stepId]
+          );
+          setShowSimpleHint(false);
+          setCurrentStepIndex(stepIdx + 1);
+        } else {
+          // Final step (including 1-step tasks): wait for child's confirmation tap on "Mình làm xong rồi!"
+          setFlowPhase('ready_final');
+        }
       }, 1000);
     },
     [clearStepTimers]
@@ -181,7 +192,7 @@ export const BuddyTaskStepRunner: React.FC<{
 
   /**
    * Speaks `textToSpeak` and, once speech truly finishes, starts the 10-second practice countdown.
-   * When `initialDelayMs <= 0` (direct user click on "Nghe Buddy nói" / "Nghe lại" / "Mình chưa hiểu"),
+   * When `initialDelayMs <= 0` (direct user click on "Nghe Buddy nói" / "Nghe lại"),
    * runs immediately in the same tick to preserve browser user-gesture activation.
    */
   const runSpeakThenCountdown = useCallback(
@@ -236,6 +247,7 @@ export const BuddyTaskStepRunner: React.FC<{
   // Auto-read 3-beat companion step guidance when entering the runner or advancing to a new step
   useEffect(() => {
     if (!task || !currentStep || completionResult?.done) return;
+    setShowSimpleHint(false);
     const stepCompanionSpeech = buildConciseStepSpeechText(
       currentStepIndex,
       currentStep
@@ -273,25 +285,69 @@ export const BuddyTaskStepRunner: React.FC<{
 
   const isCurrentStepDone = completedStepIds.includes(currentStep.id);
 
-  // "Nghe Buddy nói" / "Nghe lại": unlock audio synchronously from user gesture, speak 3-beat companion step guidance, then start 10s countdown
+  // "Nghe Buddy nói" / "Nghe lại": unlock audio synchronously from user gesture, close HelpCard if open, speak 3-beat companion step guidance, then restart 10s countdown
   const handleListenCurrentStep = () => {
     if (isSubmittingStepRef.current || completionResult?.done) return;
     voiceService.unlockAudioFromUserGesture();
+    setShowSimpleHint(false);
     const textToSpeak = buildConciseStepSpeechText(currentStepIndex, currentStep);
     runSpeakThenCountdown(textToSpeak, currentStepIndex, currentStep.id, steps.length, 0, 'guide');
   };
 
-  // "Mình chưa hiểu": unlock audio synchronously, show visual HelpCard, speak simpleExplanation gently, then start 10s countdown
+  // "Mình chưa hiểu": pause auto-advance countdown, show visual HelpCard, speak simpleExplanation gently, and remain paused on HelpCard until child resumes
   const handleNeedHelp = () => {
     if (isSubmittingStepRef.current || completionResult?.done) return;
+    clearStepTimers();
+    voiceService.cancel();
     voiceService.unlockAudioFromUserGesture();
+
+    flowTokenRef.current += 1;
+    const myToken = flowTokenRef.current;
+
     setShowSimpleHint(true);
+    setFlowPhase('speaking');
     if (!helpRequestedStepIds.includes(currentStep.id)) {
       setHelpRequestedStepIds((prev) => [...prev, currentStep.id]);
     }
-    const cleanTitle = currentStep.actionTitle.replace(/^Bước\s*\d+\s*[:.-]\s*/i, '').trim();
+
+    const cleanTitle = cleanStepActionTitle(currentStep.actionTitle);
     const helpSpeech = `Để mình gợi ý cách làm bước ${cleanTitle} dễ hiểu hơn nhé! ${currentStep.simpleExplanation}`;
-    runSpeakThenCountdown(helpSpeech, currentStepIndex, currentStep.id, steps.length, 0, 'help');
+
+    void (async () => {
+      const pref = voicePreferenceRef.current;
+      const res = await voiceService.speak(helpSpeech, pref, 'help');
+      if (flowTokenRef.current !== myToken || res.superseded) {
+        return;
+      }
+      // Keep auto-advance paused while child is viewing HelpCard
+      setFlowPhase('help_paused');
+    })();
+  };
+
+  // "Mình hiểu rồi, làm tiếp thôi!" on HelpCard: close HelpCard and resume the 10-second practice countdown
+  const handleResumeFromHelp = () => {
+    if (isSubmittingStepRef.current || completionResult?.done) return;
+    clearStepTimers();
+    voiceService.cancel();
+    voiceService.unlockAudioFromUserGesture();
+
+    flowTokenRef.current += 1;
+    const myToken = flowTokenRef.current;
+
+    setShowSimpleHint(false);
+    startTenSecondCountdown(currentStepIndex, currentStep.id, steps.length, myToken);
+  };
+
+  // Conscious fallback if device has no audio / autoplay remains blocked and child chooses "Mình đã tự đọc hướng dẫn"
+  const handleContinueWithoutAudio = () => {
+    if (isSubmittingStepRef.current || completionResult?.done) return;
+    clearStepTimers();
+    voiceService.cancel();
+
+    flowTokenRef.current += 1;
+    const myToken = flowTokenRef.current;
+
+    startTenSecondCountdown(currentStepIndex, currentStep.id, steps.length, myToken);
   };
 
   // "Bước trước": cancel active speech & timers cleanly, unlock audio gesture, and move to the previous step
@@ -307,22 +363,17 @@ export const BuddyTaskStepRunner: React.FC<{
     setCurrentStepIndex((idx) => Math.max(0, idx - 1));
   };
 
-  // Child confirms step completion:
-  // - On intermediate steps (1 .. N-1): marks current step completed and moves to next step
-  // - On final step (N): records all completed steps, calls completeTaskStepRun() ONCE, opens ResultCard
-  const handleCompleteCurrentOrFinalStep = async () => {
-    if (isSubmittingStepRef.current || completionResult?.done) return;
-
-    if (currentStepIndex + 1 < steps.length) {
-      flowTokenRef.current += 1;
-      clearStepTimers();
-      voiceService.cancel();
-      voiceService.unlockAudioFromUserGesture();
-      setCompletedStepIds((prev) =>
-        prev.includes(currentStep.id) ? prev : [...prev, currentStep.id]
-      );
-      setShowSimpleHint(false);
-      setCurrentStepIndex((idx) => idx + 1);
+  // Child confirms final step completion ("Mình làm xong rồi!"):
+  // - Only enabled on the final step after voice guidance has played (or child consciously continued)
+  // - Records all completed steps, calls completeTaskStepRun() ONCE, and opens ResultCard
+  const handleCompleteFinalTask = async () => {
+    if (
+      isSubmittingStepRef.current ||
+      completionResult?.done ||
+      currentStepIndex < steps.length - 1 ||
+      flowPhase === 'speaking' ||
+      flowPhase === 'paused_blocked'
+    ) {
       return;
     }
 
@@ -419,7 +470,7 @@ export const BuddyTaskStepRunner: React.FC<{
         </div>
       </div>
 
-      {/* Visual StepCard (1 Step = 1 Card = 1 Warm Storybook Scene Illustration + 10s Countdown + HelpCard support) */}
+      {/* Visual StepCard (1 Step = 1 Card = 1 Warm Storybook Scene Illustration + 10s Auto-Advance + HelpCard support) */}
       <TaskStepCard
         step={currentStep}
         stepIndex={currentStepIndex}
@@ -430,10 +481,12 @@ export const BuddyTaskStepRunner: React.FC<{
         showSimpleHint={showSimpleHint}
         countdownSeconds={countdownSeconds}
         flowPhase={flowPhase}
-        onCompleteStep={handleCompleteCurrentOrFinalStep}
+        onCompleteStep={handleCompleteFinalTask}
         onNeedHelp={handleNeedHelp}
         onRepeatAudio={handleListenCurrentStep}
         onPrevStep={handlePrevStep}
+        onResumeFromHelp={handleResumeFromHelp}
+        onContinueWithoutAudio={handleContinueWithoutAudio}
       />
     </div>
   );

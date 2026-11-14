@@ -443,19 +443,24 @@ export const HelpCard: React.FC<HelpCardProps> = ({
   );
 };
 
+export function cleanStepActionTitle(rawTitle: string): string {
+  return (rawTitle || '').replace(/^(?:Bước\s*\d+\s*[:.\-–—]\s*)+/i, '').trim();
+}
+
 export type StepRunnerFlowPhase =
   | 'speaking'
   | 'countdown'
   | 'paused_blocked'
+  | 'help_paused'
   | 'ready_final';
 
 /**
  * CARD TYPE 2: StepCard / TaskStepCard (Voice-Guided Action Scene Card with 10s Post-Speech Countdown)
- * - Speaks concise step title first ("Bước X: ...") without reading subtitle/description by default.
+ * - Displays progress badge "Bước X / N" and clean action title without duplicate "Bước X:" prefix.
  * - Starts 10-second countdown ONLY after voice finishes speaking.
- * - Auto-advances to next step on intermediate steps (no "Con làm xong rồi" or "Tiếp theo" buttons).
- * - Shows "Nghe lại", "Con chưa hiểu", "Bước trước" during countdown.
- * - On the final step, displays ONE primary CTA: "Con đã hoàn thành nhiệm vụ".
+ * - Auto-advances to next step on intermediate steps (no step-completion buttons on intermediate steps).
+ * - Shows "Nghe lại", "Mình chưa hiểu", "Bước trước" during countdown.
+ * - On the final step, displays ONE primary CTA: "Mình làm xong rồi!".
  */
 interface TaskStepCardProps {
   step: TaskStep;
@@ -471,6 +476,8 @@ interface TaskStepCardProps {
   onNeedHelp: () => void;
   onRepeatAudio: () => void;
   onPrevStep: () => void;
+  onResumeFromHelp?: () => void;
+  onContinueWithoutAudio?: () => void;
 }
 
 export const TaskStepCard: React.FC<TaskStepCardProps> = ({
@@ -486,11 +493,15 @@ export const TaskStepCard: React.FC<TaskStepCardProps> = ({
   onNeedHelp,
   onRepeatAudio,
   onPrevStep,
+  onResumeFromHelp,
+  onContinueWithoutAudio,
 }) => {
-  const cleanActionTitle = step.actionTitle.replace(/^Bước\s*\d+\s*[:.-]\s*/i, '').trim();
+  const cleanActionTitle = cleanStepActionTitle(step.actionTitle);
   const isFinalStep = stepIndex >= totalSteps - 1;
   const safeCountdown = Math.max(0, Math.min(10, countdownSeconds));
   const progressPercent = Math.round((safeCountdown / 10) * 100);
+  const isFinalCtaDisabled =
+    isSubmitting || flowPhase === 'speaking' || flowPhase === 'paused_blocked';
 
   return (
     <div className="space-y-4">
@@ -512,13 +523,13 @@ export const TaskStepCard: React.FC<TaskStepCardProps> = ({
           />
         </div>
 
-        {/* 3. Step Number, Concise Action Title & Short On-Card Guide (Shorter than Buddy's spoken 3-beat script) */}
+        {/* 3. Step Number Badge & Clean Action Title (No duplicate "Bước X:" in title) */}
         <div className="text-center space-y-1.5 px-2">
           <span className="inline-block text-xs font-kids font-extrabold text-[#3978F6]">
             Bước {stepIndex + 1} / {totalSteps}
           </span>
           <h2 className="font-kids text-xl sm:text-2xl font-extrabold text-[#23324D] leading-snug">
-            Bước {stepIndex + 1}: {cleanActionTitle}
+            {cleanActionTitle}
           </h2>
           {step.instruction && (
             <p className="text-xs sm:text-sm font-semibold text-[#5C6F8C] max-w-md mx-auto leading-relaxed">
@@ -527,7 +538,7 @@ export const TaskStepCard: React.FC<TaskStepCardProps> = ({
           )}
         </div>
 
-        {/* 4. 3-Phase Companion Rhythm: (1) Listen to Guidance -> (2) 10s Practice Window -> (3) Child Confirms Completion */}
+        {/* 4. Companion Rhythm Status & 10s Practice Window */}
         <div className="rounded-[22px] bg-[#F7F9FD] border border-[#3978F6]/18 p-3.5 sm:p-4 space-y-2.5">
           {flowPhase === 'speaking' && (
             <div className="flex items-center justify-center gap-2.5 text-[#3978F6] font-kids font-extrabold text-xs sm:text-sm py-1">
@@ -541,14 +552,33 @@ export const TaskStepCard: React.FC<TaskStepCardProps> = ({
               <span className="text-xs sm:text-sm font-kids font-bold text-[#23324D]">
                 Bấm nút bên cạnh để nghe mình hướng dẫn Bước {stepIndex + 1} nhé!
               </span>
-              <button
-                type="button"
-                onClick={onRepeatAudio}
-                className="min-h-[42px] px-4 py-2 rounded-[16px] bg-[#3978F6] hover:bg-[#2964DF] text-white font-kids font-extrabold text-xs sm:text-sm inline-flex items-center gap-1.5 shrink-0 cursor-pointer shadow-2xs"
-              >
-                <Volume2 className="w-4 h-4" />
-                <span>Nghe Buddy nói</span>
-              </button>
+              <div className="flex flex-wrap items-center justify-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={onRepeatAudio}
+                  className="min-h-[42px] px-4 py-2 rounded-[16px] bg-[#3978F6] hover:bg-[#2964DF] text-white font-kids font-extrabold text-xs sm:text-sm inline-flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                >
+                  <Volume2 className="w-4 h-4" />
+                  <span>Nghe Buddy nói</span>
+                </button>
+                {onContinueWithoutAudio && (
+                  <button
+                    type="button"
+                    onClick={onContinueWithoutAudio}
+                    className="min-h-[42px] px-3.5 py-2 rounded-[16px] bg-white hover:bg-[#EAF3FF] border border-[#3978F6]/25 text-[#3978F6] font-kids font-bold text-xs cursor-pointer"
+                  >
+                    Mình đã tự đọc hướng dẫn
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {flowPhase === 'help_paused' && (
+            <div className="flex items-center justify-center gap-2 text-amber-800 font-kids font-extrabold text-xs sm:text-sm py-1 text-center">
+              <span>
+                💡 Mình đang tạm dừng đếm giờ để bạn xem kỹ gợi ý bên dưới nhé!
+              </span>
             </div>
           )}
 
@@ -557,7 +587,7 @@ export const TaskStepCard: React.FC<TaskStepCardProps> = ({
               <div className="flex items-center justify-between gap-2 text-xs sm:text-sm font-kids font-extrabold">
                 <span className="text-[#23324D]">
                   {flowPhase === 'ready_final'
-                    ? `✨ Bạn đã làm xong Bước ${stepIndex + 1} chưa nào?`
+                    ? '✨ Bước cuối cùng của nhiệm vụ:'
                     : '⏱️ Thời gian bạn thực hiện hành động:'}
                 </span>
                 {flowPhase === 'countdown' && (
@@ -577,17 +607,15 @@ export const TaskStepCard: React.FC<TaskStepCardProps> = ({
               )}
 
               <p className="text-[11px] sm:text-xs font-semibold text-[#5C6F8C] text-center">
-                {flowPhase === 'ready_final'
-                  ? isFinalStep
-                    ? 'Khi đã kiểm tra xong bước cuối, bạn bấm nút xanh bên dưới để hoàn thành nhiệm vụ nhé!'
-                    : `Khi bạn thực hiện xong, hãy bấm nút xanh bên dưới để mình cùng sang Bước ${stepIndex + 2} nhé!`
-                  : 'Mình đợi bạn thực hành nhé! Làm xong lúc nào bạn cũng có thể bấm nút xác nhận bên dưới.'}
+                {isFinalStep
+                  ? 'Đây là bước cuối rồi! Khi làm xong, bạn báo mình nhé!'
+                  : 'Buddy đang đợi bạn thực hiện nhé!'}
               </p>
             </>
           )}
         </div>
 
-        {/* 5. Helper Controls ("Nghe lại", "Mình chưa hiểu", "Bước trước") + Child Confirmation CTA */}
+        {/* 5. Helper Controls ("Nghe lại", "Mình chưa hiểu", "Bước trước") + Final-Step-Only Confirmation CTA */}
         <div className="space-y-3 pt-1">
           <div className="grid grid-cols-3 gap-2 sm:gap-3">
             <button
@@ -620,37 +648,31 @@ export const TaskStepCard: React.FC<TaskStepCardProps> = ({
             </button>
           </div>
 
-          <button
-            type="button"
-            onClick={onCompleteStep}
-            disabled={isSubmitting}
-            className={`w-full min-h-[54px] px-6 py-3.5 rounded-[18px] disabled:opacity-60 disabled:pointer-events-none text-white font-kids font-extrabold text-base sm:text-lg flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer ${
-              isFinalStep
-                ? 'bg-[#2EC27E] hover:bg-[#24a86b] shadow-[0_10px_24px_rgba(46,194,126,0.28)]'
-                : flowPhase === 'ready_final'
-                ? 'bg-[#2EC27E] hover:bg-[#24a86b] shadow-[0_10px_24px_rgba(46,194,126,0.26)]'
-                : 'bg-[#3978F6] hover:bg-[#2964DF] shadow-[0_8px_20px_rgba(57,120,246,0.22)]'
-            }`}
-          >
-            <CheckCircle2 className="w-5 h-5 shrink-0" />
-            <span>
-              {isSubmitting
-                ? 'Đang lưu nhiệm vụ...'
-                : isFinalStep
-                ? 'Mình đã hoàn thành nhiệm vụ!'
-                : 'Mình làm xong bước này rồi! →'}
-            </span>
-          </button>
+          {isFinalStep && (
+            <button
+              type="button"
+              onClick={onCompleteStep}
+              disabled={isFinalCtaDisabled}
+              className="w-full min-h-[54px] px-6 py-3.5 rounded-[18px] bg-[#2EC27E] hover:bg-[#24a86b] shadow-[0_10px_24px_rgba(46,194,126,0.28)] disabled:opacity-55 disabled:pointer-events-none text-white font-kids font-extrabold text-base sm:text-lg flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
+            >
+              <CheckCircle2 className="w-5 h-5 shrink-0" />
+              <span>
+                {isSubmitting ? 'Đang lưu nhiệm vụ...' : 'Mình làm xong rồi!'}
+              </span>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Dedicated Visual HelpCard when child clicks "Con chưa hiểu" */}
+      {/* Dedicated Visual HelpCard when child clicks "Mình chưa hiểu" */}
       {showSimpleHint && (
         <HelpCard
           stepTitle={cleanActionTitle}
           simpleExplanation={step.simpleExplanation}
           illustrationKey={step.illustrationKey}
           onListenHelp={onNeedHelp}
+          onDismissOrAction={onResumeFromHelp}
+          actionButtonLabel="Mình hiểu rồi, làm tiếp thôi!"
         />
       )}
     </div>
