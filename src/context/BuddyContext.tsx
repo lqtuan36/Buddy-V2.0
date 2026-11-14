@@ -358,12 +358,23 @@ export const BuddyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     [data.profile.displayName]
   );
 
+  const subViewRef = useRef<SubView>(subView);
+  subViewRef.current = subView;
+  const activeTabRef = useRef<ActiveTab>(activeTab);
+  activeTabRef.current = activeTab;
+
   const triggerBuddyGreeting = useCallback(
     async (isUserInitiated = false) => {
       try {
         if (isUserInitiated) {
+          voiceService.unlockAudioFromUserGesture();
           voiceService.clearAutoplayBlocked();
           setNeedsManualGreetingButton(false);
+        } else if (
+          subViewRef.current.type !== 'none' ||
+          activeTabRef.current !== 'home'
+        ) {
+          return;
         }
         // Mark session greeting immediately BEFORE awaiting speak() so re-renders never double-trigger
         setHasGreetedThisSession(true);
@@ -393,15 +404,24 @@ export const BuddyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Automatically attempt session voice greeting ONCE after both app data and /api/health are ready
   useEffect(() => {
-    if (!isLoaded || !healthChecked || hasGreetedThisSession || autoGreetingAttemptedRef.current) {
+    if (
+      !isLoaded ||
+      !healthChecked ||
+      hasGreetedThisSession ||
+      autoGreetingAttemptedRef.current ||
+      subView.type !== 'none' ||
+      activeTab !== 'home'
+    ) {
       return;
     }
     autoGreetingAttemptedRef.current = true;
     const timer = window.setTimeout(() => {
-      void triggerBuddyGreeting(false);
+      if (subViewRef.current.type === 'none' && activeTabRef.current === 'home') {
+        void triggerBuddyGreeting(false);
+      }
     }, 350);
     return () => window.clearTimeout(timer);
-  }, [isLoaded, healthChecked, hasGreetedThisSession, triggerBuddyGreeting]);
+  }, [isLoaded, healthChecked, hasGreetedThisSession, subView.type, activeTab, triggerBuddyGreeting]);
 
   const persist = useCallback(async (nextData: BuddyAppData) => {
     setData(nextData);
@@ -477,11 +497,16 @@ export const BuddyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [openBuddyChat]);
 
   const openSubView = useCallback((view: SubView, keepVoicePlaying = false) => {
+    autoGreetingAttemptedRef.current = true;
     if (!keepVoicePlaying) {
       voiceService.stop();
       if (view.type !== 'story-detail') {
         podcastPlaybackController.stopAndCleanup();
       }
+    }
+    // Synchronously unlock the shared HTMLAudioElement inside the user's click gesture ("Bắt đầu", "Mở thẻ")
+    if (view.type === 'guide-task') {
+      voiceService.unlockAudioFromUserGesture();
     }
     setSubView(view);
   }, []);

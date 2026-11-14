@@ -469,7 +469,7 @@ export const ChildProfileOverviewView: React.FC = () => {
               )}
             </div>
             <p className="text-[11px] text-[#23324D]/70 mt-0.5">
-              Leda · Cô bạn ấm áp, vui tính
+              Zephyr · Cô bạn ấm áp, vui tươi
             </p>
           </button>
 
@@ -602,7 +602,7 @@ export const MyBuddySettingsView: React.FC<{ onBack?: () => void }> = ({
             Giọng nói của Buddy
           </h1>
           <p className="text-xs sm:text-sm text-[#23324D]/75 mt-1 max-w-sm mx-auto leading-relaxed">
-            Chọn giọng đọc <strong>Leda · Cô bạn ấm áp, vui tính</strong> hoặc <strong>Nam hoạt bát (Puck)</strong> cho bạn Buddy của {data.profile.displayName}.
+            Chọn giọng đọc <strong>Zephyr · Cô bạn ấm áp, vui tươi</strong> hoặc <strong>Nam hoạt bát (Puck)</strong> cho bạn Buddy của {data.profile.displayName}.
           </p>
         </div>
       </section>
@@ -648,10 +648,10 @@ export const MyBuddySettingsView: React.FC<{ onBack?: () => void }> = ({
                 <BuddyAvatar size="sm" />
                 <div>
                   <h3 className="font-kids text-base font-extrabold text-[#23324D]">
-                    Leda · Cô bạn ấm áp, vui tính
+                    Zephyr · Cô bạn ấm áp, vui tươi
                   </h3>
                   <p className="text-xs text-[#23324D]/75">
-                    Trẻ trung, ấm áp, vui tính như cô bạn đồng hành của bạn nhỏ 6–8 tuổi
+                    Trẻ trung, ấm áp, vui tươi như cô bạn đồng hành của bạn nhỏ 6–8 tuổi
                   </p>
                 </div>
               </div>
@@ -665,7 +665,7 @@ export const MyBuddySettingsView: React.FC<{ onBack?: () => void }> = ({
                 {voiceState.isUsingFallback && pref.gender === 'female'
                   ? voiceState.activeAudioSourceLabel || 'Giọng Nữ dự phòng (vi-VN)'
                   : voiceCapabilities.geminiTtsAvailable
-                  ? 'Leda · Cô bạn ấm áp, vui tính'
+                  ? 'Zephyr · Cô bạn ấm áp, vui tươi'
                   : 'Giọng Nữ dự phòng (vi-VN)'}
               </span>
               <span className="font-bold text-[#3978F6]">

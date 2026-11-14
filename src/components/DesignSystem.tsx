@@ -538,16 +538,16 @@ export const TaskStepCard: React.FC<TaskStepCardProps> = ({
 
           {flowPhase === 'paused_blocked' && (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 text-center sm:text-left">
-              <span className="text-xs font-kids font-bold text-amber-800">
-                Âm thanh đang tạm dừng. Bạn chạm nút bên cạnh để nghe mình đọc Bước {stepIndex + 1} nhé!
+              <span className="text-xs sm:text-sm font-kids font-bold text-[#23324D]">
+                Bấm nút bên cạnh để nghe mình hướng dẫn Bước {stepIndex + 1} nhé!
               </span>
               <button
                 type="button"
                 onClick={onRepeatAudio}
-                className="min-h-[42px] px-4 py-2 rounded-[16px] bg-[#3978F6] hover:bg-[#2964DF] text-white font-kids font-extrabold text-xs inline-flex items-center gap-1.5 shrink-0 cursor-pointer shadow-2xs"
+                className="min-h-[42px] px-4 py-2 rounded-[16px] bg-[#3978F6] hover:bg-[#2964DF] text-white font-kids font-extrabold text-xs sm:text-sm inline-flex items-center gap-1.5 shrink-0 cursor-pointer shadow-2xs"
               >
                 <Volume2 className="w-4 h-4" />
-                <span>Thử phát lại</span>
+                <span>Nghe Buddy nói</span>
               </button>
             </div>
           )}

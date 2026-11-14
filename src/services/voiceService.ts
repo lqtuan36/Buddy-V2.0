@@ -7,7 +7,7 @@ export type VoiceEngineMode =
   | 'text-fallback';
 
 /**
- * v1.4 UnifiedVoiceService State Machine:
+ * UnifiedVoiceService State Machine:
  * Supports 'idle' | 'loading' | 'speaking' | 'playing' | 'paused' | 'error'
  * ('playing' is kept synchronized with 'speaking' for backward compatibility across views)
  */
@@ -29,6 +29,7 @@ export interface VoicePlaybackState {
   autoplayBlocked?: boolean;
   isUsingFallback?: boolean;
   activeAudioSourceLabel?: string;
+  lastErrorType?: 'autoplay_blocked' | 'abort_error' | 'network_or_api_error' | null;
 }
 
 export interface VoiceRuntimeCapabilities {
@@ -44,6 +45,10 @@ type VoiceSubscriber = (
   state: VoicePlaybackState,
   capabilities: VoiceRuntimeCapabilities
 ) => void;
+
+// 44-byte 1-sample silent PCM WAV data URI used to unlock the single shared HTMLAudioElement inside a user click gesture
+const SILENT_UNLOCK_WAV_URI =
+  'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
 
 /**
  * Normalizes Vietnamese text before TTS playback so numbers, symbols, dates, and abbreviations
@@ -112,7 +117,9 @@ function base64ToUint8Array(base64: string): Uint8Array {
 }
 
 class UnifiedVoiceService {
-  private audioElement: HTMLAudioElement | null = null;
+  // Single persistent HTMLAudioElement reused across the entire session (prevents multiple audio instances & preserves gesture unlock)
+  private sharedAudioElement: HTMLAudioElement | null = null;
+  private isAudioUnlocked = false;
   private activeObjectUrl: string | null = null;
   private currentAbortController: AbortController | null = null;
   private activeSpeechUtterance: SpeechSynthesisUtterance | null = null;
@@ -125,22 +132,24 @@ class UnifiedVoiceService {
 
   private state: VoicePlaybackState = {
     status: 'idle',
-    activeEngine: 'browser-speech-synthesis',
+    activeEngine: 'gemini-server-tts',
     activeGender: 'female',
     lastSpokenText: '',
     currentUtteranceId: null,
     statusMessage: 'Sẵn sàng phát giọng nói của Buddy.',
     autoplayBlocked: false,
+    lastErrorType: null,
   };
 
   private capabilities: VoiceRuntimeCapabilities = {
-    geminiTtsAvailable: false,
+    geminiTtsAvailable: true,
     browserSpeechAvailable:
       typeof window !== 'undefined' && 'speechSynthesis' in window,
     vietnameseVoicesCount: 0,
     maleVietnameseVoiceFound: false,
     femaleVietnameseVoiceFound: false,
-    voiceAvailabilityNote: 'Đang kiểm tra giọng đọc tiếng Việt trên thiết bị...',
+    voiceAvailabilityNote:
+      'Đang dùng giọng AI Gemini tiếng Việt: Zephyr · Cô bạn ấm áp, vui tươi (Nữ) & Puck · Cậu bạn hoạt bát (Nam).',
   };
 
   constructor() {
@@ -157,6 +166,73 @@ class UnifiedVoiceService {
     }
   }
 
+  /**
+   * Returns the single shared HTMLAudioElement instance for this browser session.
+   * Never creates duplicate Audio elements.
+   */
+  private getOrCreateAudioElement(): HTMLAudioElement | null {
+    if (typeof window === 'undefined' || typeof Audio === 'undefined') {
+      return null;
+    }
+    if (!this.sharedAudioElement) {
+      const el = new Audio();
+      el.preload = 'auto';
+      el.setAttribute('playsinline', 'true');
+      this.sharedAudioElement = el;
+    }
+    return this.sharedAudioElement;
+  }
+
+  /**
+   * Synchronously unlocks the single shared HTMLAudioElement inside a direct user click/tap gesture
+   * (e.g., when clicking "Bắt đầu", "Mở thẻ", "Nghe Buddy nói", "Nghe lại", or advancing a step).
+   * This satisfies desktop & mobile browser autoplay policies so the subsequent async `/api/tts` response
+   * can call `sharedAudioElement.play()` without throwing `NotAllowedError`.
+   */
+  public unlockAudioFromUserGesture(): void {
+    this.clearAutoplayBlocked();
+    const audio = this.getOrCreateAudioElement();
+    if (!audio) return;
+
+    // Do not interrupt if the shared element is already actively playing a real speech utterance
+    if (
+      this.isAudioUnlocked ||
+      ((this.state.status === 'playing' || this.state.status === 'speaking') &&
+        !audio.paused)
+    ) {
+      return;
+    }
+
+    try {
+      const prevVolume = audio.volume;
+      audio.muted = false;
+      audio.volume = 0.01;
+      audio.src = SILENT_UNLOCK_WAV_URI;
+      const playPromise = audio.play();
+      if (playPromise && typeof playPromise.then === 'function') {
+        playPromise
+          .then(() => {
+            this.isAudioUnlocked = true;
+            // Only pause if a real TTS blob hasn't replaced `audio.src` in the meantime
+            if (audio.src === SILENT_UNLOCK_WAV_URI) {
+              try {
+                audio.pause();
+                audio.currentTime = 0;
+              } catch {
+                // ignore
+              }
+            }
+            audio.volume = prevVolume > 0.01 ? prevVolume : 1;
+          })
+          .catch(() => {
+            audio.volume = prevVolume > 0.01 ? prevVolume : 1;
+          });
+      }
+    } catch {
+      // Ignore synchronous unlock errors
+    }
+  }
+
   public setGeminiTtsAvailable(available: boolean): void {
     this.capabilities.geminiTtsAvailable = available;
     this.updateCapabilityNote();
@@ -164,7 +240,7 @@ class UnifiedVoiceService {
   }
 
   /**
-   * Live-updates volume, mute, and playbackRate on any active audio element without restarting speech.
+   * Live-updates volume, mute, and playbackRate on the shared audio element without restarting speech.
    */
   public syncLivePreference(preference: VoicePreference): void {
     this.lastPref = preference;
@@ -172,10 +248,10 @@ class UnifiedVoiceService {
       this.cancel();
       return;
     }
-    if (this.audioElement) {
+    if (this.sharedAudioElement) {
       try {
-        this.audioElement.volume = Math.max(0, Math.min(1, preference.volume));
-        this.audioElement.playbackRate = Math.max(
+        this.sharedAudioElement.volume = Math.max(0, Math.min(1, preference.volume));
+        this.sharedAudioElement.playbackRate = Math.max(
           0.75,
           Math.min(1.25, preference.speechRate || 1.0)
         );
@@ -194,8 +270,6 @@ class UnifiedVoiceService {
 
     try {
       const voices = window.speechSynthesis.getVoices() || [];
-      // STRICT VIETNAMESE-ONLY VOICE FILTER (v1.4 Sec 4.1 & A02):
-      // Only select voices whose lang starts with 'vi' (preferring 'vi-VN').
       const viVoices = voices.filter((v) =>
         (v.lang || '').toLowerCase().startsWith('vi')
       );
@@ -214,34 +288,34 @@ class UnifiedVoiceService {
   }
 
   private updateCapabilityNote(): void {
-    if (this.capabilities.geminiTtsAvailable) {
-      this.capabilities.voiceAvailabilityNote =
-        'Đang dùng giọng AI Gemini tiếng Việt: Leda · Cô bạn ấm áp, vui tính (Nữ) & Puck · Cậu bạn hoạt bát (Nam).';
+    if (this.state.isUsingFallback && this.state.activeAudioSourceLabel) {
+      this.capabilities.voiceAvailabilityNote = `Đang phát qua nguồn dự phòng: ${this.state.activeAudioSourceLabel} (khi hạn mức Gemini TTS tạm đầy).`;
       return;
     }
 
-    if (this.state.isUsingFallback && this.state.activeAudioSourceLabel) {
-      this.capabilities.voiceAvailabilityNote = `Đang phát qua nguồn dự phòng: ${this.state.activeAudioSourceLabel} (do Gemini TTS tạm hết hạn mức hoặc chưa kết nối).`;
+    if (this.capabilities.geminiTtsAvailable) {
+      this.capabilities.voiceAvailabilityNote =
+        'Đang dùng giọng AI Gemini tiếng Việt: Zephyr · Cô bạn ấm áp, vui tươi (Nữ) & Puck · Cậu bạn hoạt bát (Nam).';
       return;
     }
 
     if (!this.capabilities.browserSpeechAvailable) {
       this.capabilities.voiceAvailabilityNote =
-        'Thiết bị chưa hỗ trợ Web Speech API. Buddy sẽ hiển thị lời thoại bằng chữ rõ ràng.';
+        'Thiết bị chưa hỗ trợ Web Speech API. Buddy sẽ phát giọng đọc từ máy chủ hoặc hiển thị lời thoại bằng chữ rõ ràng.';
       return;
     }
 
     if (this.capabilities.vietnameseVoicesCount === 0) {
       this.capabilities.voiceAvailabilityNote =
-        'Trình duyệt chưa cài đặt gói giọng đọc tiếng Việt (vi-VN). Buddy hiển thị lời thoại bằng chữ để tránh phát nhầm giọng tiếng Anh.';
+        'Đang kết nối giọng đọc tiếng Việt trên máy chủ (Zephyr / Puck).';
       return;
     }
 
     if (this.capabilities.vietnameseVoicesCount >= 2) {
-      this.capabilities.voiceAvailabilityNote = `Trình duyệt có ${this.capabilities.vietnameseVoicesCount} giọng đọc tiếng Việt (vi-VN) cho Giọng Nam và Giọng Nữ (cao độ/ngữ điệu phụ thuộc bộ giọng hệ điều hành).`;
+      this.capabilities.voiceAvailabilityNote = `Trình duyệt có ${this.capabilities.vietnameseVoicesCount} giọng đọc tiếng Việt (vi-VN) cho Giọng Nam và Giọng Nữ.`;
     } else {
       this.capabilities.voiceAvailabilityNote =
-        'Trình duyệt có 1 giọng đọc tiếng Việt (vi-VN). Buddy điều chỉnh tốc độ & cao độ nhẹ nhàng cho Giọng Nam/Nữ (ngữ điệu phụ thuộc engine hệ điều hành).';
+        'Trình duyệt có 1 giọng đọc tiếng Việt (vi-VN). Buddy điều chỉnh tốc độ & cao độ nhẹ nhàng cho Giọng Nam/Nữ.';
     }
   }
 
@@ -279,6 +353,10 @@ class UnifiedVoiceService {
     }
   }
 
+  /**
+   * Stops any in-flight request or active playback on the single shared HTMLAudioElement
+   * without destroying the shared element instance (preserving its user-gesture unlock state).
+   */
   private cleanupAudioResources(): void {
     if (this.currentAbortController) {
       try {
@@ -289,18 +367,23 @@ class UnifiedVoiceService {
       this.currentAbortController = null;
     }
 
-    if (this.audioElement) {
+    if (this.sharedAudioElement) {
       try {
-        this.audioElement.onplay = null;
-        this.audioElement.onended = null;
-        this.audioElement.onerror = null;
-        this.audioElement.pause();
-        this.audioElement.removeAttribute('src');
-        this.audioElement.load();
+        this.sharedAudioElement.onplay = null;
+        this.sharedAudioElement.onended = null;
+        this.sharedAudioElement.onerror = null;
+        if (
+          !this.sharedAudioElement.paused &&
+          this.sharedAudioElement.src !== SILENT_UNLOCK_WAV_URI
+        ) {
+          this.sharedAudioElement.pause();
+        }
+        if (this.sharedAudioElement.src !== SILENT_UNLOCK_WAV_URI) {
+          this.sharedAudioElement.currentTime = 0;
+        }
       } catch {
         // Ignore cleanup errors
       }
-      this.audioElement = null;
     }
 
     if (this.activeObjectUrl) {
@@ -341,9 +424,9 @@ class UnifiedVoiceService {
   }
 
   public pause(): void {
-    if (this.audioElement && !this.audioElement.paused) {
+    if (this.sharedAudioElement && !this.sharedAudioElement.paused) {
       try {
-        this.audioElement.pause();
+        this.sharedAudioElement.pause();
         this.state = {
           ...this.state,
           status: 'paused',
@@ -375,10 +458,15 @@ class UnifiedVoiceService {
   }
 
   public resume(): void {
-    if (this.audioElement && this.audioElement.paused && this.state.status === 'paused') {
-      this.audioElement
+    if (
+      this.sharedAudioElement &&
+      this.sharedAudioElement.paused &&
+      this.state.status === 'paused'
+    ) {
+      this.sharedAudioElement
         .play()
         .then(() => {
+          this.isAudioUnlocked = true;
           this.state = {
             ...this.state,
             status: 'playing',
@@ -411,10 +499,11 @@ class UnifiedVoiceService {
   }
 
   public clearAutoplayBlocked(): void {
-    if (this.state.autoplayBlocked) {
+    if (this.state.autoplayBlocked || this.state.lastErrorType) {
       this.state = {
         ...this.state,
         autoplayBlocked: false,
+        lastErrorType: null,
       };
       this.notify();
     }
@@ -422,6 +511,7 @@ class UnifiedVoiceService {
 
   public async replayLast(): Promise<void> {
     if (!this.state.lastSpokenText || !this.lastPref) return;
+    this.unlockAudioFromUserGesture();
     await this.speak(
       this.state.lastSpokenText,
       { ...this.lastPref, muted: false },
@@ -434,19 +524,24 @@ class UnifiedVoiceService {
     preference: VoicePreference,
     context: VoiceContextType = 'chat',
     onEnded?: () => void
-  ): Promise<{ ok: boolean; autoplayBlocked?: boolean; superseded?: boolean }> {
+  ): Promise<{
+    ok: boolean;
+    autoplayBlocked?: boolean;
+    superseded?: boolean;
+    errorType?: 'autoplay_blocked' | 'abort_error' | 'network_or_api_error';
+  }> {
     const rawCleanText = text.trim();
     if (!rawCleanText) return { ok: false };
 
     // Apply companion "mình - bạn" language normalization ONLY for non-story Buddy utterances
     const cleanText = toBuddyCompanionVoiceText(rawCleanText, context);
 
-    // Duplicate-request lock: if the exact same text & gender was triggered within 700ms and is already loading/playing, ignore duplicate tap
+    // Duplicate-request lock: if the exact same text & gender was triggered within 450ms and is already loading/playing, ignore duplicate tap
     const now = Date.now();
     const signature = `${preference.gender}:${context}:${cleanText}`;
     if (
       signature === this.lastRequestSignature &&
-      now - this.lastRequestTimestamp < 700 &&
+      now - this.lastRequestTimestamp < 450 &&
       (this.state.status === 'loading' ||
         this.state.status === 'playing' ||
         this.state.status === 'speaking')
@@ -475,14 +570,17 @@ class UnifiedVoiceService {
         currentUtteranceId: null,
         statusMessage: 'Đang tắt âm thanh (Chế độ đọc chữ).',
         autoplayBlocked: false,
+        lastErrorType: null,
       };
       this.notify();
       if (onEnded) onEnded();
       return { ok: true };
     }
 
-    // 2. Primary Path: Server-side Gemini TTS (when available & enabled)
-    if (preference.preferServerTts && this.capabilities.geminiTtsAvailable) {
+    // 2. Primary Path: Server-side TTS (/api/tts with Gemini Puck / Zephyr + server WAV fallback)
+    // CRITICAL FIX: Always call /api/tts when preferServerTts !== false; never let a prior fallback
+    // response permanently disable /api/tts for subsequent steps!
+    if (preference.preferServerTts !== false) {
       this.state = {
         status: 'loading',
         activeEngine: 'gemini-server-tts',
@@ -490,9 +588,10 @@ class UnifiedVoiceService {
         lastSpokenText: cleanText,
         currentUtteranceId: utteranceId,
         statusMessage: `Đang chuẩn bị giọng ${
-          preference.gender === 'male' ? 'Nam' : 'Nữ'
-        } tiếng Việt của Buddy...`,
+          preference.gender === 'male' ? 'Nam (Puck)' : 'Nữ (Zephyr)'
+        } của Buddy...`,
         autoplayBlocked: false,
+        lastErrorType: null,
       };
       this.notify();
 
@@ -522,7 +621,7 @@ class UnifiedVoiceService {
 
       // If Gemini audio already started playing and then stopped/errored mid-stream, do NOT repeat with browser SpeechSynthesis
       if (geminiResult === 'failed_after_play') {
-        return { ok: false };
+        return { ok: false, errorType: 'network_or_api_error' };
       }
 
       if (geminiResult === 'autoplay_blocked') {
@@ -532,11 +631,16 @@ class UnifiedVoiceService {
           activeGender: preference.gender,
           lastSpokenText: cleanText,
           currentUtteranceId: null,
-          statusMessage: 'Nhấn "Nghe lại" hoặc "Chào Buddy" để bật âm thanh trên trình duyệt.',
+          statusMessage: 'Bấm "Nghe Buddy nói" để bật âm thanh trên trình duyệt.',
           autoplayBlocked: true,
+          lastErrorType: 'autoplay_blocked',
         };
         this.notify();
-        return { ok: false, autoplayBlocked: true };
+        return {
+          ok: false,
+          autoplayBlocked: true,
+          errorType: 'autoplay_blocked',
+        };
       }
     }
 
@@ -546,7 +650,7 @@ class UnifiedVoiceService {
     }
 
     // 3. Secondary Fallback Path: Browser SpeechSynthesis with STRICT Vietnamese-Only ('vi' / 'vi-VN') filter
-    // Only reached if Gemini Server TTS is unavailable or failed BEFORE audio started playing.
+    // Only reached if /api/tts failed with a network/HTTP error BEFORE audio started playing.
     if (this.capabilities.browserSpeechAvailable) {
       const browserResult = await this.tryPlayVietnameseBrowserSpeech(
         normalizedText,
@@ -574,15 +678,20 @@ class UnifiedVoiceService {
           activeGender: preference.gender,
           lastSpokenText: cleanText,
           currentUtteranceId: null,
-          statusMessage: 'Nhấn "Nghe lại" hoặc "Chào Buddy" để bật âm thanh tiếng Việt.',
+          statusMessage: 'Bấm "Nghe Buddy nói" để bật âm thanh tiếng Việt.',
           autoplayBlocked: true,
+          lastErrorType: 'autoplay_blocked',
         };
         this.notify();
-        return { ok: false, autoplayBlocked: true };
+        return {
+          ok: false,
+          autoplayBlocked: true,
+          errorType: 'autoplay_blocked',
+        };
       }
     }
 
-    // 4. Final Safe Fallback: Text-only mode (NEVER speak with English/foreign voice)
+    // 4. Final Safe Fallback: Text-only mode (NEVER speak with English/foreign voice, NEVER auto-retry in a loop)
     if (token === this.activeUtteranceToken) {
       this.state = {
         status: 'idle',
@@ -590,12 +699,13 @@ class UnifiedVoiceService {
         activeGender: preference.gender,
         lastSpokenText: cleanText,
         currentUtteranceId: null,
-        statusMessage: 'Thiết bị chưa có giọng đọc tiếng Việt',
+        statusMessage: 'Bấm "Nghe Buddy nói" để nghe lại hướng dẫn.',
         autoplayBlocked: false,
+        lastErrorType: 'network_or_api_error',
       };
       this.notify();
     }
-    return { ok: false };
+    return { ok: false, errorType: 'network_or_api_error' };
   }
 
   private async tryPlayGeminiServerTts(
@@ -620,11 +730,11 @@ class UnifiedVoiceService {
         signal,
       });
 
-      if (token !== this.activeUtteranceToken) return 'superseded';
+      if (token !== this.activeUtteranceToken || signal.aborted) return 'superseded';
       if (!response.ok) return 'failed_before_play';
 
       const payload = await response.json();
-      if (token !== this.activeUtteranceToken) return 'superseded';
+      if (token !== this.activeUtteranceToken || signal.aborted) return 'superseded';
       if (!payload?.audioBase64) return 'failed_before_play';
 
       const pcmBytes = base64ToUint8Array(payload.audioBase64);
@@ -650,7 +760,7 @@ class UnifiedVoiceService {
         audioBlob = new Blob([pcmBytes.buffer as ArrayBuffer], { type: mimeType });
       }
 
-      if (token !== this.activeUtteranceToken) return 'superseded';
+      if (token !== this.activeUtteranceToken || signal.aborted) return 'superseded';
 
       // Never allow Web Speech API and Gemini TTS to play simultaneously
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -661,28 +771,58 @@ class UnifiedVoiceService {
         }
       }
 
+      const audio = this.getOrCreateAudioElement();
+      if (!audio) return 'failed_before_play';
+
+      // Cleanly detach any previous listeners on the single shared audio instance
+      audio.onplay = null;
+      audio.onended = null;
+      audio.onerror = null;
+      try {
+        if (!audio.paused) {
+          audio.pause();
+        }
+      } catch {
+        // ignore
+      }
+
+      if (this.activeObjectUrl) {
+        try {
+          URL.revokeObjectURL(this.activeObjectUrl);
+        } catch {
+          // ignore
+        }
+        this.activeObjectUrl = null;
+      }
+
       const objectUrl = URL.createObjectURL(audioBlob);
       this.activeObjectUrl = objectUrl;
-      const audio = new Audio(objectUrl);
+      audio.src = objectUrl;
+      audio.muted = false;
       audio.volume = Math.max(0, Math.min(1, preference.volume));
       const baseRate = preference.speechRate || 1.0;
       const effectiveRate = context === 'help' ? baseRate * 0.96 : baseRate;
       audio.playbackRate = Math.max(0.75, Math.min(1.25, effectiveRate));
-      this.audioElement = audio;
 
       let hasStartedPlaying = false;
+      let retriedAbortOnce = false;
 
       return await new Promise<
         'played' | 'autoplay_blocked' | 'failed_before_play' | 'failed_after_play' | 'superseded'
       >((resolve) => {
-        audio.onended = () => {
+        const cleanupUrlIfCurrent = () => {
           if (this.activeObjectUrl === objectUrl) {
-            URL.revokeObjectURL(objectUrl);
+            try {
+              URL.revokeObjectURL(objectUrl);
+            } catch {
+              // ignore
+            }
             this.activeObjectUrl = null;
           }
-          if (this.audioElement === audio) {
-            this.audioElement = null;
-          }
+        };
+
+        audio.onended = () => {
+          cleanupUrlIfCurrent();
           if (token !== this.activeUtteranceToken) {
             resolve('superseded');
             return;
@@ -693,19 +833,14 @@ class UnifiedVoiceService {
             currentUtteranceId: null,
             statusMessage: 'Buddy đã nói xong.',
             autoplayBlocked: false,
+            lastErrorType: null,
           };
           this.notify();
           resolve('played');
         };
 
         audio.onerror = () => {
-          if (this.activeObjectUrl === objectUrl) {
-            URL.revokeObjectURL(objectUrl);
-            this.activeObjectUrl = null;
-          }
-          if (this.audioElement === audio) {
-            this.audioElement = null;
-          }
+          cleanupUrlIfCurrent();
           if (token !== this.activeUtteranceToken) {
             resolve('superseded');
             return;
@@ -714,75 +849,113 @@ class UnifiedVoiceService {
             ...this.state,
             status: 'idle',
             currentUtteranceId: null,
+            lastErrorType: 'network_or_api_error',
           };
           this.notify();
           resolve(hasStartedPlaying ? 'failed_after_play' : 'failed_before_play');
         };
 
-        audio
-          .play()
-          .then(() => {
-            if (token !== this.activeUtteranceToken) {
+        const markPlayingSuccess = () => {
+          if (token !== this.activeUtteranceToken || signal.aborted) {
+            try {
               audio.pause();
-              resolve('superseded');
-              return;
+            } catch {
+              // ignore
             }
-            hasStartedPlaying = true;
-            const usedFallback = Boolean(payload?.isFallback);
-            const officialVoiceLabel =
-              preference.gender === 'male'
-                ? 'Puck · Cậu bạn hoạt bát'
-                : 'Leda · Cô bạn ấm áp, vui tính';
-            const sourceLabel = usedFallback
-              ? `Giọng tiếng Việt dự phòng trên máy chủ (vi-VN · ${
-                  preference.gender === 'male' ? 'Nam' : 'Nữ'
-                })`
-              : `Gemini ${officialVoiceLabel}`;
+            cleanupUrlIfCurrent();
+            resolve('superseded');
+            return;
+          }
+          this.isAudioUnlocked = true;
+          hasStartedPlaying = true;
+          const usedFallback = Boolean(payload?.isFallback);
+          const officialVoiceLabel =
+            preference.gender === 'male'
+              ? 'Puck · Cậu bạn hoạt bát'
+              : 'Zephyr · Cô bạn ấm áp, vui tươi';
+          const sourceLabel = usedFallback
+            ? `Giọng tiếng Việt dự phòng trên máy chủ (vi-VN · ${
+                preference.gender === 'male' ? 'Nam' : 'Nữ'
+              })`
+            : `Gemini ${officialVoiceLabel}`;
 
-            this.state = {
-              status: 'playing',
-              activeEngine: usedFallback ? 'browser-speech-synthesis' : 'gemini-server-tts',
-              activeGender: preference.gender,
-              lastSpokenText: this.state.lastSpokenText,
-              currentUtteranceId: utteranceId,
-              isUsingFallback: usedFallback,
-              activeAudioSourceLabel: sourceLabel,
-              statusMessage: usedFallback
-                ? `Buddy đang đọc (${sourceLabel})...`
-                : `Buddy đang nói (${sourceLabel})...`,
-              autoplayBlocked: false,
-            };
-            if (usedFallback) {
-              this.capabilities.geminiTtsAvailable = false;
-              this.updateCapabilityNote();
-            } else if (!this.capabilities.geminiTtsAvailable) {
-              this.capabilities.geminiTtsAvailable = true;
-              this.updateCapabilityNote();
-            }
-            this.notify();
-          })
-          .catch((err: unknown) => {
-            if (this.activeObjectUrl === objectUrl) {
-              URL.revokeObjectURL(objectUrl);
-              this.activeObjectUrl = null;
-            }
-            if (this.audioElement === audio) {
-              this.audioElement = null;
-            }
-            if (token !== this.activeUtteranceToken) {
-              resolve('superseded');
-              return;
-            }
-            const errName = err instanceof Error ? err.name : '';
-            if (errName === 'NotAllowedError') {
-              resolve('autoplay_blocked');
-            } else {
+          this.state = {
+            status: 'playing',
+            activeEngine: usedFallback ? 'browser-speech-synthesis' : 'gemini-server-tts',
+            activeGender: preference.gender,
+            lastSpokenText: this.state.lastSpokenText,
+            currentUtteranceId: utteranceId,
+            isUsingFallback: usedFallback,
+            activeAudioSourceLabel: sourceLabel,
+            statusMessage: usedFallback
+              ? `Buddy đang đọc (${sourceLabel})...`
+              : `Buddy đang nói (${sourceLabel})...`,
+            autoplayBlocked: false,
+            lastErrorType: null,
+          };
+          // Keep geminiTtsAvailable = true so future utterances always try /api/tts first
+          this.capabilities.geminiTtsAvailable = true;
+          this.updateCapabilityNote();
+          this.notify();
+        };
+
+        const attemptPlay = () => {
+          if (token !== this.activeUtteranceToken || signal.aborted) {
+            cleanupUrlIfCurrent();
+            resolve('superseded');
+            return;
+          }
+
+          audio
+            .play()
+            .then(() => {
+              markPlayingSuccess();
+            })
+            .catch((err: unknown) => {
+              if (token !== this.activeUtteranceToken || signal.aborted) {
+                cleanupUrlIfCurrent();
+                resolve('superseded');
+                return;
+              }
+
+              const errName =
+                err instanceof Error
+                  ? err.name
+                  : String((err as { name?: string })?.name || '');
+
+              // 1. Browser Autoplay Policy blocked playback
+              if (errName === 'NotAllowedError') {
+                this.isAudioUnlocked = false;
+                cleanupUrlIfCurrent();
+                resolve('autoplay_blocked');
+                return;
+              }
+
+              // 2. AbortError: If interrupted transiently by shared audio element source switch, retry once after 60ms
+              if (errName === 'AbortError' && !retriedAbortOnce) {
+                retriedAbortOnce = true;
+                window.setTimeout(() => {
+                  attemptPlay();
+                }, 60);
+                return;
+              }
+
+              cleanupUrlIfCurrent();
               resolve('failed_before_play');
-            }
-          });
+            });
+        };
+
+        attemptPlay();
       });
-    } catch {
+    } catch (err: unknown) {
       if (token !== this.activeUtteranceToken || signal.aborted) {
+        return 'superseded';
+      }
+      const errName =
+        err instanceof Error
+          ? err.name
+          : String((err as { name?: string })?.name || '');
+      if (errName === 'AbortError') {
         return 'superseded';
       }
       return 'failed_before_play';
@@ -816,8 +989,7 @@ class UnifiedVoiceService {
           return aExact - bExact;
         });
 
-      // CRITICAL RULE (v1.4 Sec 4.1 & A02): If the browser has NO Vietnamese voice,
-      // DO NOT call speechSynthesis.speak with default English voice!
+      // CRITICAL RULE: If the browser has NO Vietnamese voice, DO NOT call speechSynthesis.speak with default English voice!
       if (viVoices.length === 0) {
         return 'no_vi_voice';
       }
@@ -860,7 +1032,7 @@ class UnifiedVoiceService {
           viVoices.find((v) => /nu|nữ|female|linh|mai|lan|hoai|my/i.test(v.name)) ||
           viVoices[0];
         utterance.voice = femaleVoice;
-        // Warm, moderate natural pitch for Leda Friendly fallback
+        // Warm, moderate natural pitch for Zephyr fallback
         utterance.pitch =
           context === 'celebration'
             ? 1.06
@@ -891,6 +1063,7 @@ class UnifiedVoiceService {
               activeAudioSourceLabel: browserSourceLabel,
               statusMessage: `Buddy đang đọc (${browserSourceLabel})...`,
               autoplayBlocked: false,
+              lastErrorType: null,
             };
             this.updateCapabilityNote();
             this.notify();
@@ -910,6 +1083,7 @@ class UnifiedVoiceService {
               currentUtteranceId: null,
               statusMessage: 'Buddy đã đọc xong.',
               autoplayBlocked: false,
+              lastErrorType: null,
             };
             this.notify();
             resolve('played');
@@ -932,6 +1106,7 @@ class UnifiedVoiceService {
                 status: 'idle',
                 currentUtteranceId: null,
                 statusMessage: 'Thiết bị chưa có giọng đọc tiếng Việt',
+                lastErrorType: 'network_or_api_error',
               };
               this.notify();
               resolve('failed');

@@ -176,8 +176,13 @@ export const BuddyTaskStepRunner: React.FC<{
     [clearStepTimers]
   );
 
+  const voicePreferenceRef = useRef(data.voicePreference);
+  voicePreferenceRef.current = data.voicePreference;
+
   /**
    * Speaks `textToSpeak` and, once speech truly finishes, starts the 10-second practice countdown.
+   * When `initialDelayMs <= 0` (direct user click on "Nghe Buddy nói" / "Nghe lại" / "Mình chưa hiểu"),
+   * runs immediately in the same tick to preserve browser user-gesture activation.
    */
   const runSpeakThenCountdown = useCallback(
     (
@@ -185,7 +190,7 @@ export const BuddyTaskStepRunner: React.FC<{
       stepIdx: number,
       stepId: string,
       totalStepsCount: number,
-      initialDelayMs = 150,
+      initialDelayMs = 0,
       voiceContext: 'guide' | 'help' = 'guide'
     ) => {
       clearStepTimers();
@@ -197,9 +202,10 @@ export const BuddyTaskStepRunner: React.FC<{
       setCountdownSeconds(PRACTICE_COUNTDOWN_SECONDS);
       setFlowPhase('speaking');
 
-      speechDelayTimeoutRef.current = window.setTimeout(async () => {
+      const executeSpeak = async () => {
         if (flowTokenRef.current !== myToken) return;
-        const res = await voiceService.speak(textToSpeak, data.voicePreference, voiceContext);
+        const pref = voicePreferenceRef.current;
+        const res = await voiceService.speak(textToSpeak, pref, voiceContext);
 
         // Ignore if unmounted, step changed, or another button was pressed while speaking
         if (flowTokenRef.current !== myToken || res.superseded) {
@@ -207,16 +213,24 @@ export const BuddyTaskStepRunner: React.FC<{
         }
 
         // If browser blocked autoplay or audio failed (and user hasn't muted intentionally),
-        // show a retryable state instead of silently auto-skipping steps
-        if (res.autoplayBlocked || (!res.ok && !data.voicePreference.muted)) {
+        // show the "Nghe Buddy nói" prompt without auto-completing or auto-advancing the step
+        if (res.autoplayBlocked || (!res.ok && !pref.muted)) {
           setFlowPhase('paused_blocked');
           return;
         }
 
         startTenSecondCountdown(stepIdx, stepId, totalStepsCount, myToken);
-      }, initialDelayMs);
+      };
+
+      if (initialDelayMs <= 0) {
+        void executeSpeak();
+      } else {
+        speechDelayTimeoutRef.current = window.setTimeout(() => {
+          void executeSpeak();
+        }, initialDelayMs);
+      }
     },
-    [clearStepTimers, data.voicePreference, startTenSecondCountdown]
+    [clearStepTimers, startTenSecondCountdown]
   );
 
   // Auto-read 3-beat companion step guidance when entering the runner or advancing to a new step
@@ -231,7 +245,7 @@ export const BuddyTaskStepRunner: React.FC<{
       currentStepIndex,
       currentStep.id,
       steps.length,
-      180,
+      20,
       'guide'
     );
 
@@ -259,26 +273,28 @@ export const BuddyTaskStepRunner: React.FC<{
 
   const isCurrentStepDone = completedStepIds.includes(currentStep.id);
 
-  // "Nghe lại": cancel/reset 10s countdown, speak 3-beat companion step guidance again, then restart 10s countdown
+  // "Nghe Buddy nói" / "Nghe lại": unlock audio synchronously from user gesture, speak 3-beat companion step guidance, then start 10s countdown
   const handleListenCurrentStep = () => {
     if (isSubmittingStepRef.current || completionResult?.done) return;
+    voiceService.unlockAudioFromUserGesture();
     const textToSpeak = buildConciseStepSpeechText(currentStepIndex, currentStep);
-    runSpeakThenCountdown(textToSpeak, currentStepIndex, currentStep.id, steps.length, 40, 'guide');
+    runSpeakThenCountdown(textToSpeak, currentStepIndex, currentStep.id, steps.length, 0, 'guide');
   };
 
-  // "Mình chưa hiểu": cancel/reset 10s countdown, show visual HelpCard, speak simpleExplanation gently, then restart 10s countdown
+  // "Mình chưa hiểu": unlock audio synchronously, show visual HelpCard, speak simpleExplanation gently, then start 10s countdown
   const handleNeedHelp = () => {
     if (isSubmittingStepRef.current || completionResult?.done) return;
+    voiceService.unlockAudioFromUserGesture();
     setShowSimpleHint(true);
     if (!helpRequestedStepIds.includes(currentStep.id)) {
       setHelpRequestedStepIds((prev) => [...prev, currentStep.id]);
     }
     const cleanTitle = currentStep.actionTitle.replace(/^Bước\s*\d+\s*[:.-]\s*/i, '').trim();
     const helpSpeech = `Để mình gợi ý cách làm bước ${cleanTitle} dễ hiểu hơn nhé! ${currentStep.simpleExplanation}`;
-    runSpeakThenCountdown(helpSpeech, currentStepIndex, currentStep.id, steps.length, 40, 'help');
+    runSpeakThenCountdown(helpSpeech, currentStepIndex, currentStep.id, steps.length, 0, 'help');
   };
 
-  // "Bước trước": cancel active speech & timers cleanly and move to the previous step
+  // "Bước trước": cancel active speech & timers cleanly, unlock audio gesture, and move to the previous step
   const handlePrevStep = () => {
     if (currentStepIndex <= 0 || isSubmittingStepRef.current || completionResult?.done) {
       return;
@@ -286,6 +302,7 @@ export const BuddyTaskStepRunner: React.FC<{
     flowTokenRef.current += 1;
     clearStepTimers();
     voiceService.cancel();
+    voiceService.unlockAudioFromUserGesture();
     setShowSimpleHint(false);
     setCurrentStepIndex((idx) => Math.max(0, idx - 1));
   };
@@ -300,6 +317,7 @@ export const BuddyTaskStepRunner: React.FC<{
       flowTokenRef.current += 1;
       clearStepTimers();
       voiceService.cancel();
+      voiceService.unlockAudioFromUserGesture();
       setCompletedStepIds((prev) =>
         prev.includes(currentStep.id) ? prev : [...prev, currentStep.id]
       );
