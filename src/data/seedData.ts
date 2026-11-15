@@ -2,19 +2,29 @@ import { BuddyAppData } from '../types/domain';
 import { DEFAULT_POINTS_POLICY, getCurrentMonthKey, getTodayDateKey } from '../services/pointsPolicy';
 
 /**
- * Monotonic version for built-in system seed content (tasks, steps, schedule, stories, growth journey).
- * Incrementing this value triggers selective synchronization of system-managed fields
- * for unmodified built-in entities without overwriting parent-created or parent-customized items.
+ * Distinct version constants for Buddy v2.2 Content Management & Safe Data Migration:
+ * - BUDDY_APP_VERSION: UI & feature release version
+ * - SEED_CONTENT_VERSION: System content library version (tasks, steps, stories, growth journey, schedule)
+ * - BUDDY_DATA_SCHEMA_VERSION: Persistent storage schema version
  */
-export const SEED_CONTENT_VERSION = 2026111402;
+export const BUDDY_APP_VERSION = '2.2.0';
+export const SEED_CONTENT_VERSION = 2026111501;
+export const BUDDY_DATA_SCHEMA_VERSION = 2;
+export const BUDDY_BUILD_TIME = '2026-11-15T01:00:00Z';
+export const BUDDY_GIT_COMMIT_SHORT = 'v2.2-main';
 
 export function createInitialSeedData(): BuddyAppData {
   const todayKey = getTodayDateKey();
   const monthKey = getCurrentMonthKey();
 
   return {
+    appVersion: BUDDY_APP_VERSION,
+    contentVersion: SEED_CONTENT_VERSION,
+    schemaVersion: BUDDY_DATA_SCHEMA_VERSION,
     seedContentVersion: SEED_CONTENT_VERSION,
     deletedBuiltinTaskIds: [],
+    deletedBuiltinStoryIds: [],
+    deletedBuiltinTopicIds: [],
     profile: {
       id: 'child-minh-anh',
       displayName: 'Minh Anh',

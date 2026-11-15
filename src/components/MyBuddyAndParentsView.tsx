@@ -1081,6 +1081,10 @@ export const ParentDashboardView: React.FC<{ onBack: () => void }> = ({ onBack }
     updateChildProfileName,
     updateChildCharacterVariant,
     resetDemoData,
+    versionDiagnostics,
+    checkForContentUpdates,
+    resolveMigrationConflict,
+    restorePreMigrationBackup,
   } = useBuddy();
 
   // Demo Gate Form State
@@ -5286,6 +5290,206 @@ export const ParentDashboardView: React.FC<{ onBack: () => void }> = ({ onBack }
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* Section VII: Thông tin Phiên bản, Nội dung & Đồng bộ An toàn (v2.2) */}
+              <div className="md:col-span-2 rounded-[24px] bg-white border border-[#23324D]/10 p-5 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <span className="text-xs font-bold text-[#3978F6]">
+                      Quản trị Phiên bản & Đồng bộ Nội dung (v2.2 Safe Migration)
+                    </span>
+                    <h2 className="font-kids text-base sm:text-lg font-extrabold text-[#23324D]">
+                      Thông tin Phiên bản & Kiểm tra Cập nhật Nội dung
+                    </h2>
+                    <p className="text-xs text-[#5C6F8C] mt-0.5">
+                      Kiểm tra và đồng bộ an toàn thư viện nội dung chuẩn được đóng gói trong bản build frontend hiện tại mà không làm mất hồ sơ, sao, lịch học hay các mục ba mẹ đã tùy chỉnh.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const res = await checkForContentUpdates();
+                        // Sync local task/topic drafts if currently open
+                        const refreshedTask =
+                          res.updatedCount >= 0
+                            ? data.tasks.find((t) => t.id === editingTaskId) || data.tasks[0]
+                            : null;
+                        if (refreshedTask) {
+                          setTaskDraft(JSON.parse(JSON.stringify(refreshedTask)));
+                        }
+                        showNotice(
+                          `Đã kiểm tra & đồng bộ thư viện nội dung đóng gói trong frontend (Content v${versionDiagnostics.bundledContentVersion}): ${res.updatedCount} mục chuẩn sẵn sàng, bảo toàn ${res.preservedCustomCount} mục tùy chỉnh của ba mẹ${
+                            res.conflictsCount > 0
+                              ? `, ${res.conflictsCount} mục cần ba mẹ xác nhận nguồn gốc.`
+                              : '.'
+                          }`
+                        );
+                      }}
+                      className="min-h-[42px] px-4 py-2 rounded-[16px] bg-[#3978F6] hover:bg-[#2968e6] text-white font-kids font-extrabold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5 shrink-0" />
+                      <span>Kiểm tra cập nhật nội dung</span>
+                    </button>
+
+                    {versionDiagnostics.backupAvailable && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const ok = await restorePreMigrationBackup();
+                          if (ok) {
+                            showNotice(
+                              'Đã khôi phục thành công bản sao lưu trước khi nâng cấp phiên bản!'
+                            );
+                          } else {
+                            setValidationError(
+                              'Không tìm thấy hoặc không thể đọc bản sao lưu hợp lệ.'
+                            );
+                          }
+                        }}
+                        className="min-h-[42px] px-3.5 py-2 rounded-[16px] bg-[#F7F9FD] hover:bg-[#EAF3FF] border border-[#23324D]/15 text-[#23324D] font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5 shrink-0" />
+                        <span>Khôi phục bản sao lưu trước Migration</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* 6 Required Version & Diagnostic Fields */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+                  <div className="rounded-xl bg-[#F7F9FD] border border-[#23324D]/8 p-3">
+                    <span className="block text-[10px] font-bold text-[#5C6F8C] uppercase">
+                      Buddy App Version
+                    </span>
+                    <p className="font-mono font-extrabold text-xs sm:text-sm text-[#23324D] mt-0.5">
+                      v{versionDiagnostics.appVersion}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl bg-[#F7F9FD] border border-[#23324D]/8 p-3">
+                    <span className="block text-[10px] font-bold text-[#5C6F8C] uppercase">
+                      Content Version
+                    </span>
+                    <p className="font-mono font-extrabold text-xs sm:text-sm text-[#3978F6] mt-0.5">
+                      {versionDiagnostics.bundledContentVersion}
+                    </p>
+                    <span className="block text-[10px] text-[#188050] font-bold">
+                      {versionDiagnostics.isContentUpToDate ? '✓ Đã đồng bộ' : 'Cần đồng bộ'}
+                    </span>
+                  </div>
+
+                  <div className="rounded-xl bg-[#F7F9FD] border border-[#23324D]/8 p-3">
+                    <span className="block text-[10px] font-bold text-[#5C6F8C] uppercase">
+                      Data Schema Version
+                    </span>
+                    <p className="font-mono font-extrabold text-xs sm:text-sm text-[#23324D] mt-0.5">
+                      v{versionDiagnostics.bundledSchemaVersion}
+                    </p>
+                    <span className="block text-[10px] text-[#5C6F8C]">
+                      Lưu trữ: v{versionDiagnostics.storedSchemaVersion ?? 1}
+                    </span>
+                  </div>
+
+                  <div className="rounded-xl bg-[#F7F9FD] border border-[#23324D]/8 p-3">
+                    <span className="block text-[10px] font-bold text-[#5C6F8C] uppercase">
+                      Build Time
+                    </span>
+                    <p className="font-mono font-bold text-xs text-[#23324D] mt-0.5 truncate">
+                      {versionDiagnostics.buildTime.replace('T', ' ').replace('Z', ' UTC')}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl bg-[#F7F9FD] border border-[#23324D]/8 p-3">
+                    <span className="block text-[10px] font-bold text-[#5C6F8C] uppercase">
+                      Git Commit
+                    </span>
+                    <p className="font-mono font-bold text-xs text-[#23324D] mt-0.5">
+                      {versionDiagnostics.gitCommit}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl bg-[#F7F9FD] border border-[#23324D]/8 p-3">
+                    <span className="block text-[10px] font-bold text-[#5C6F8C] uppercase">
+                      Storage Mode
+                    </span>
+                    <p className="font-bold text-xs text-[#23324D] mt-0.5">
+                      Local Storage
+                    </p>
+                    <span className="block text-[10px] font-mono text-[#5C6F8C] truncate">
+                      {versionDiagnostics.storageKey}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Unresolved Legacy Conflicts List (if any) */}
+                {data.migrationMetadata?.conflicts &&
+                  data.migrationMetadata.conflicts.length > 0 && (
+                    <div className="rounded-2xl bg-amber-50/90 border border-amber-300 p-4 space-y-3">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                        <div>
+                          <h3 className="font-kids font-extrabold text-xs sm:text-sm text-amber-950">
+                            Có {data.migrationMetadata.conflicts.length} trường nội dung cũ chưa rõ nguồn gốc (Đã giữ an toàn bản đang lưu)
+                          </h3>
+                          <p className="text-[11px] text-amber-900/80 mt-0.5">
+                            Hệ thống phát hiện văn bản cũ khác với bản chuẩn nhưng không có dấu xác nhận chỉnh sửa. Hệ thống không tự ý ghi đè; ba mẹ có thể chọn giữ lại hoặc áp dụng bản chuẩn Buddy mới:
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                        {data.migrationMetadata.conflicts.map((conflict) => (
+                          <div
+                            key={conflict.id}
+                            className="rounded-xl bg-white border border-amber-200 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                          >
+                            <div className="space-y-1 min-w-0">
+                              <p className="font-bold text-[#23324D]">
+                                {conflict.title} · Trường:{' '}
+                                <span className="font-mono text-[#3978F6]">{conflict.field}</span>
+                              </p>
+                              <p className="text-[11px] text-[#5C6F8C] line-clamp-1">
+                                <strong>Đang lưu:</strong> {conflict.storedValuePreview}
+                              </p>
+                              <p className="text-[11px] text-[#188050] line-clamp-1">
+                                <strong>Bản chuẩn v2.2:</strong> {conflict.seedValuePreview}
+                              </p>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  await resolveMigrationConflict(conflict.id, 'preserved_stored');
+                                  showNotice(
+                                    `Đã xác nhận giữ nguyên nội dung của gia đình cho "${conflict.title}".`
+                                  );
+                                }}
+                                className="min-h-[34px] px-3 py-1.5 rounded-xl bg-[#F7F9FD] hover:bg-amber-100 border border-[#23324D]/15 text-[#23324D] font-bold text-[11px] cursor-pointer"
+                              >
+                                Giữ bản đang lưu
+                              </button>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  await resolveMigrationConflict(conflict.id, 'applied_seed');
+                                  showNotice(
+                                    `Đã cập nhật "${conflict.title}" sang nội dung chuẩn Buddy v2.2!`
+                                  );
+                                }}
+                                className="min-h-[34px] px-3 py-1.5 rounded-xl bg-[#3978F6] hover:bg-[#2968e6] text-white font-bold text-[11px] cursor-pointer"
+                              >
+                                Áp dụng bản chuẩn mới
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
               </div>
             </div>
           )}

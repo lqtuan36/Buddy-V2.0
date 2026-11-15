@@ -64,6 +64,22 @@ export type IllustrationKey =
   | 'shoes-hat'
   | 'check-list';
 
+export type ContentOriginStatus =
+  | 'builtin_unmodified'
+  | 'builtin_approved_only'
+  | 'parent_customized'
+  | 'parent_created'
+  | 'legacy_unresolved'
+  | 'conflict_needs_review';
+
+export type ParentActionType =
+  | 'approval'
+  | 'customization'
+  | 'creation'
+  | 'upload'
+  | 'schedule_update'
+  | 'deletion';
+
 export interface TaskStep {
   id: string;
   stepNumber: number;
@@ -74,7 +90,11 @@ export interface TaskStep {
   buddyPraise: string; // Supportive response when step is completed
   illustrationKey: IllustrationKey;
   contentVersion?: number; // System seed content version for selective sync
+  baseContentVersion?: number; // Seed content version this step was based on
   customizedByParent?: boolean; // True only if parent explicitly edited this step's content
+  customizedFields?: string[]; // Exact fields modified by parent (e.g., ['instruction', 'buddySpeech'])
+  originStatus?: ContentOriginStatus;
+  lastEditedAt?: string;
 }
 
 export type ApprovalStatus = 'approved' | 'pending_review' | 'draft';
@@ -87,6 +107,8 @@ export interface ParentApproval {
   reviewedBy: string;
   reviewedAt: string;
   notes?: string;
+  actionType?: ParentActionType; // Distinguishes pure approval from real content customization
+  customizedFields?: string[]; // Fields modified during this event (empty for pure approval)
 }
 
 export interface Task {
@@ -105,7 +127,14 @@ export interface Task {
   steps: TaskStep[];
   sourceType?: 'builtin' | 'custom'; // Distinguishes system-provided default tasks from parent-created tasks
   contentVersion?: number; // System seed content version for selective updates
+  baseContentVersion?: number; // Seed version when created/last synced
   customizedByParent?: boolean; // True only if parent explicitly edited task content
+  customizedFields?: string[]; // Task-level fields modified by parent (e.g. ['title', 'subtitle'])
+  deletedBuiltinStepIds?: string[]; // Built-in step IDs explicitly removed by parent
+  archivedSteps?: TaskStep[]; // Retired steps preserved for historical taskRun references
+  originStatus?: ContentOriginStatus;
+  requiresReapproval?: boolean; // Set if a system update significantly changes task safety/action scope
+  lastEditedAt?: string;
 }
 
 export type RoutinePeriod = 'morning' | 'after_school' | 'evening';
@@ -287,7 +316,11 @@ export interface Story {
   voiceVersion?: string;
   baseSpeed?: number;
   contentVersion?: number;
+  baseContentVersion?: number;
   customizedByParent?: boolean;
+  customizedFields?: string[];
+  originStatus?: ContentOriginStatus;
+  lastEditedAt?: string;
   sceneTimeline?: StorySceneCue[];
   paragraphSceneImages?: Array<{ imageUrl?: string; caption?: string }>;
   sourceDocumentInfo?: StorySourceDocumentInfo;
@@ -342,6 +375,12 @@ export interface GrowthExperienceItem {
   emotionTag?: string;
   realLifeConfirmed?: boolean;
   lastUpdatedAt?: string;
+  contentVersion?: number;
+  baseContentVersion?: number;
+  customizedByParent?: boolean;
+  customizedFields?: string[];
+  originStatus?: ContentOriginStatus;
+  lastEditedAt?: string;
 }
 
 export type GrowthQualitySlug =
@@ -371,7 +410,11 @@ export interface GrowthQualityTopic {
   yPercent?: number; // Vertical position (%) on the illustrated parchment adventure map
   version?: number; // Curriculum version for non-destructive parent edits
   contentVersion?: number; // System seed content version
+  baseContentVersion?: number;
   customizedByParent?: boolean;
+  customizedFields?: string[];
+  originStatus?: ContentOriginStatus;
+  lastEditedAt?: string;
   isParentUploaded?: boolean;
   sourceFileName?: string;
   experiences: GrowthExperienceItem[]; // 4 experiences: Khám phá, Hiểu, Thực hành, Chia sẻ
@@ -465,9 +508,49 @@ export interface ParentSettings {
   demoPasscode: string;
 }
 
+export interface MigrationConflictItem {
+  id: string;
+  entityType: 'task' | 'task_step' | 'story' | 'growth_topic' | 'growth_experience' | 'schedule';
+  entityId: string;
+  parentEntityId?: string;
+  title: string;
+  field: string;
+  storedValuePreview: string;
+  seedValuePreview: string;
+  reason: 'unknown_legacy_origin' | 'structural_mismatch' | 'major_content_change';
+  resolution: 'preserved_stored' | 'applied_seed' | 'pending_parent_choice';
+  detectedAt: string;
+}
+
+export interface MigrationMetadata {
+  appVersion: string;
+  contentVersion: number;
+  schemaVersion: number;
+  previousAppVersion?: string;
+  previousContentVersion?: number;
+  previousSchemaVersion?: number;
+  lastMigratedAt: string;
+  lastMigrationStatus: 'success' | 'no_op_up_to_date' | 'failed_kept_previous' | 'fresh_install';
+  lastErrorMessage?: string;
+  backupAvailable: boolean;
+  backupCreatedAt?: string;
+  updatedBuiltinTasksCount: number;
+  updatedBuiltinStoriesCount: number;
+  updatedBuiltinTopicsCount: number;
+  preservedCustomizationsCount: number;
+  conflicts: MigrationConflictItem[];
+}
+
 export interface BuddyAppData {
+  appVersion?: string;
+  contentVersion?: number;
+  schemaVersion?: number;
   seedContentVersion?: number;
   deletedBuiltinTaskIds?: string[];
+  deletedBuiltinStoryIds?: string[];
+  deletedBuiltinTopicIds?: string[];
+  archivedBuiltinTasks?: Task[];
+  migrationMetadata?: MigrationMetadata;
   profile: ChildProfile;
   voicePreference: VoicePreference;
   pointsPolicy: PointsPolicy;

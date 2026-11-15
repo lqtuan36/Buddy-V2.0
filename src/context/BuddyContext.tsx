@@ -22,7 +22,12 @@ import {
   VoicePreference,
 } from '../types/domain';
 import { createInitialSeedData, SEED_CONTENT_VERSION } from '../data/seedData';
-import { appRepository, StorageMode, storyRepository } from '../services/repository';
+import {
+  appRepository,
+  StorageMode,
+  storyRepository,
+  VersionDiagnostics,
+} from '../services/repository';
 import {
   buildIdempotencyKey,
   calculateStarSummary,
@@ -253,6 +258,20 @@ interface BuddyContextValue {
   ) => Promise<void>;
   updateChildCharacterVariant: (characterVariant: ChildCharacterVariant) => Promise<void>;
   resetDemoData: () => Promise<void>;
+
+  // 9) v2.2 Content Management, Version Diagnostics & Safe Data Migration
+  versionDiagnostics: VersionDiagnostics;
+  checkForContentUpdates: () => Promise<{
+    updatedCount: number;
+    preservedCustomCount: number;
+    conflictsCount: number;
+    status: string;
+  }>;
+  resolveMigrationConflict: (
+    conflictId: string,
+    resolution: 'preserved_stored' | 'applied_seed'
+  ) => Promise<void>;
+  restorePreMigrationBackup: () => Promise<boolean>;
 }
 
 const BuddyContext = createContext<BuddyContextValue | null>(null);
@@ -315,7 +334,13 @@ export const BuddyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
 
     fetch('/api/health')
-      .then((res) => res.json())
+      .then((res) => {
+        const ct = res.headers.get('content-type') || '';
+        if (!ct.includes('application/json')) {
+          throw new Error('NO_JSON_HEALTH');
+        }
+        return res.json();
+      })
       .then((health) => {
         if (mounted && health) {
           const hasGemini = Boolean(health.geminiConfigured);
@@ -984,12 +1009,42 @@ export const BuddyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const saveGrowthTopicByParent = useCallback(
     async (updatedTopic: GrowthQualityTopic) => {
       const nowIso = new Date().toISOString();
-      // Preserve child's existing responses when parent edits a topic (Sec. 7.2 Versioning)
+      const seedTopic = createInitialSeedData().growthTopics.find(
+        (st) => st.id === updatedTopic.id || st.slug === updatedTopic.slug
+      );
       const existingTopic = (data.growthTopics || []).find((t) => t.id === updatedTopic.id);
+
+      const expFields = [
+        'title',
+        'promptOrStory',
+        'buddySpeech',
+        'choices',
+        'choiceFeedbacks',
+        'recommendedChoiceIndices',
+        'actionSuggestion',
+        'buddyWarmFeedback',
+      ] as const;
+
+      let anyExpCustomized = false;
       const mergedExperiences = updatedTopic.experiences.map((exp, idx) => {
         const prevExp =
           existingTopic?.experiences.find((e) => e.id === exp.id) ||
           existingTopic?.experiences[idx];
+        const seedExp =
+          seedTopic?.experiences.find((se) => se.id === exp.id) ||
+          seedTopic?.experiences.find((se) => se.type === exp.type);
+
+        const expCustomizedFields: string[] = [];
+        if (seedExp && !updatedTopic.isParentUploaded) {
+          for (const f of expFields) {
+            if (JSON.stringify(exp[f] ?? '') !== JSON.stringify(seedExp[f] ?? '')) {
+              expCustomizedFields.push(f);
+            }
+          }
+        }
+        const isExpCustom = Boolean(updatedTopic.isParentUploaded || expCustomizedFields.length > 0);
+        if (isExpCustom) anyExpCustomized = true;
+
         return {
           ...exp,
           status: prevExp?.status ?? exp.status,
@@ -998,14 +1053,52 @@ export const BuddyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           emotionTag: prevExp?.emotionTag ?? exp.emotionTag,
           realLifeConfirmed: prevExp?.realLifeConfirmed ?? exp.realLifeConfirmed,
           lastUpdatedAt: prevExp?.lastUpdatedAt ?? exp.lastUpdatedAt,
+          contentVersion: SEED_CONTENT_VERSION,
+          baseContentVersion: SEED_CONTENT_VERSION,
+          customizedByParent: isExpCustom,
+          customizedFields: expCustomizedFields,
+          originStatus: updatedTopic.isParentUploaded
+            ? ('parent_created' as const)
+            : isExpCustom
+            ? ('parent_customized' as const)
+            : ('builtin_approved_only' as const),
+          lastEditedAt: isExpCustom ? nowIso : prevExp?.lastEditedAt,
         };
       });
 
+      const topicHeaderFields = [
+        'title',
+        'subtitle',
+        'landmarkName',
+        'themeColor',
+        'illustrationKey',
+      ] as const;
+      const topicCustomizedFields: string[] = [];
+      if (seedTopic && !updatedTopic.isParentUploaded) {
+        for (const f of topicHeaderFields) {
+          if (String(updatedTopic[f] ?? '').trim() !== String(seedTopic[f] ?? '').trim()) {
+            topicCustomizedFields.push(f);
+          }
+        }
+      }
+
+      const isTopicCustomized = Boolean(
+        updatedTopic.isParentUploaded || topicCustomizedFields.length > 0 || anyExpCustomized
+      );
+
       const stamped: GrowthQualityTopic = {
         ...updatedTopic,
-        version: (existingTopic?.version || 1) + 1,
+        version: isTopicCustomized ? (existingTopic?.version || 1) + 1 : existingTopic?.version || 1,
         contentVersion: SEED_CONTENT_VERSION,
-        customizedByParent: true,
+        baseContentVersion: SEED_CONTENT_VERSION,
+        customizedByParent: isTopicCustomized,
+        customizedFields: topicCustomizedFields,
+        originStatus: updatedTopic.isParentUploaded
+          ? 'parent_created'
+          : isTopicCustomized
+          ? 'parent_customized'
+          : 'builtin_approved_only',
+        lastEditedAt: isTopicCustomized ? nowIso : existingTopic?.lastEditedAt,
         experiences: mergedExperiences,
         updatedAt: nowIso,
       };
@@ -1026,6 +1119,8 @@ export const BuddyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         targetType: 'journey' as const,
         targetId: stamped.id,
         status: stamped.approvalStatus,
+        actionType: isTopicCustomized ? ('customization' as const) : ('approval' as const),
+        customizedFields: topicCustomizedFields,
         reviewedBy: 'Phụ huynh',
         reviewedAt: nowIso,
         notes: `${
@@ -1063,6 +1158,8 @@ export const BuddyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         existingByIdOrSlug.set(existing.title.toLowerCase(), existing);
       }
 
+      const hasUploadedCustomTopic = uploadedTopics.some((t) => Boolean(t.isParentUploaded));
+
       const mergedBatch: GrowthQualityTopic[] = uploadedTopics.map((topic, index) => {
         const prev =
           existingByIdOrSlug.get(topic.id) ||
@@ -1070,7 +1167,8 @@ export const BuddyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const coord = defaultCoords[index % defaultCoords.length];
 
         const mergedExps = topic.experiences.map((exp, eIdx) => {
-          const prevExp = prev?.experiences[eIdx];
+          const prevExp =
+            prev?.experiences.find((pe) => pe.id === exp.id) || prev?.experiences[eIdx];
           return {
             ...exp,
             status: prevExp?.status ?? exp.status ?? 'not_explored',
@@ -1079,6 +1177,13 @@ export const BuddyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             emotionTag: prevExp?.emotionTag ?? exp.emotionTag,
             realLifeConfirmed: prevExp?.realLifeConfirmed ?? exp.realLifeConfirmed,
             lastUpdatedAt: prevExp?.lastUpdatedAt ?? exp.lastUpdatedAt,
+            customizedByParent: topic.isParentUploaded
+              ? true
+              : prevExp?.customizedByParent ?? false,
+            customizedFields: prevExp?.customizedFields ?? [],
+            originStatus: topic.isParentUploaded
+              ? ('parent_created' as const)
+              : prevExp?.originStatus ?? ('builtin_approved_only' as const),
           };
         });
 
@@ -1088,7 +1193,16 @@ export const BuddyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           stageOrder: index + 1,
           xPercent: topic.xPercent ?? prev?.xPercent ?? coord.x,
           yPercent: topic.yPercent ?? prev?.yPercent ?? coord.y,
-          version: (prev?.version || 1) + 1,
+          version: topic.isParentUploaded ? (prev?.version || 1) + 1 : prev?.version || 1,
+          contentVersion: SEED_CONTENT_VERSION,
+          baseContentVersion: SEED_CONTENT_VERSION,
+          customizedByParent: topic.isParentUploaded
+            ? true
+            : prev?.customizedByParent ?? false,
+          customizedFields: prev?.customizedFields ?? [],
+          originStatus: topic.isParentUploaded
+            ? 'parent_created'
+            : prev?.originStatus ?? 'builtin_approved_only',
           approvalStatus: approveAll ? 'approved' : topic.approvalStatus,
           selectedByParent: approveAll ? true : topic.selectedByParent,
           isCurrentFocus: index === 0 ? true : Boolean(topic.isCurrentFocus),
@@ -1102,11 +1216,13 @@ export const BuddyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         targetType: 'journey' as const,
         targetId: 'curriculum-batch',
         status: (approveAll ? 'approved' : 'draft') as ApprovalStatus,
+        actionType: hasUploadedCustomTopic ? ('upload' as const) : ('approval' as const),
+        customizedFields: [],
         reviewedBy: 'Phụ huynh',
         reviewedAt: nowIso,
         notes: `${
-          approveAll ? 'Phê duyệt & xuất bản' : 'Lưu bản nháp'
-        } lộ trình ${mergedBatch.length} chặng phẩm chất từ tệp tổng hợp.`,
+          approveAll ? 'Phê duyệt & xuất bản' : 'Cập nhật thứ tự / lưu bản nháp'
+        } lộ trình ${mergedBatch.length} chặng phẩm chất.`,
       };
 
       await persist({
@@ -1587,30 +1703,69 @@ export const BuddyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return { ok: false, error: validation.reason };
       }
 
+      const nowIso = new Date().toISOString();
       const existing = data.stories.find((s) => s.id === story.id);
+      const seedStory = createInitialSeedData().stories.find((ss) => ss.id === story.id);
+
       const contentChanged =
         existing &&
         (existing.title !== story.title ||
           existing.paragraphs.join('\n') !== story.paragraphs.join('\n'));
 
+      const isParentUploadedOrCustom = Boolean(
+        !seedStory ||
+          story.isParentUploaded ||
+          (story.sourceType && story.sourceType !== 'builtin')
+      );
+
+      const storyContentFields = [
+        'title',
+        'category',
+        'summary',
+        'durationMinutes',
+        'ageRecommendation',
+        'coverTheme',
+        'illustrationType',
+        'paragraphs',
+        'moralLesson',
+        'reflectionQuestion',
+        'reflectionSuggestions',
+      ] as const;
+
+      const storyCustomizedFields: string[] = [];
+      if (seedStory && !isParentUploadedOrCustom) {
+        for (const f of storyContentFields) {
+          if (JSON.stringify(story[f] ?? '') !== JSON.stringify(seedStory[f] ?? '')) {
+            storyCustomizedFields.push(f);
+          }
+        }
+      }
+
+      const isCustomized = isParentUploadedOrCustom || storyCustomizedFields.length > 0;
+
       const stampedStory: Story = {
         ...story,
-        contentVersion: contentChanged
-          ? (existing?.contentVersion || 1) + 1
-          : story.contentVersion || existing?.contentVersion || SEED_CONTENT_VERSION,
-        customizedByParent: Boolean(
-          story.customizedByParent ||
-            existing?.customizedByParent ||
-            story.sourceType !== 'builtin' ||
-            contentChanged
-        ),
+        contentVersion: isParentUploadedOrCustom
+          ? contentChanged
+            ? (existing?.contentVersion || 1) + 1
+            : story.contentVersion || existing?.contentVersion || 1
+          : SEED_CONTENT_VERSION,
+        baseContentVersion: isParentUploadedOrCustom ? 1 : SEED_CONTENT_VERSION,
+        customizedByParent: isCustomized,
+        customizedFields: storyCustomizedFields,
+        originStatus: isParentUploadedOrCustom
+          ? 'parent_created'
+          : isCustomized
+          ? 'parent_customized'
+          : 'builtin_approved_only',
+        lastEditedAt: isCustomized ? nowIso : existing?.lastEditedAt,
         orderIndex: story.orderIndex ?? existing?.orderIndex ?? data.stories.length + 1,
         approvalStatus: story.approvedByParent
           ? 'approved'
           : story.approvalStatus || 'draft',
-        audioStatus: contentChanged ? 'none' : story.audioStatus || existing?.audioStatus || 'none',
-        audioAssetId: contentChanged ? undefined : story.audioAssetId || existing?.audioAssetId,
-        audioUrl: contentChanged ? undefined : story.audioUrl || existing?.audioUrl,
+        audioStatus: 'none',
+        audioAssetId: undefined,
+        audioUrl: undefined,
       };
 
       const exists = Boolean(existing);
@@ -1623,8 +1778,14 @@ export const BuddyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         targetType: 'story' as const,
         targetId: stampedStory.id,
         status: stampedStory.approvedByParent ? ('approved' as const) : ('draft' as const),
+        actionType: isParentUploadedOrCustom
+          ? ('upload' as const)
+          : isCustomized
+          ? ('customization' as const)
+          : ('approval' as const),
+        customizedFields: storyCustomizedFields,
         reviewedBy: 'Phụ huynh',
-        reviewedAt: new Date().toISOString(),
+        reviewedAt: nowIso,
         notes: `${exists ? 'Cập nhật' : 'Tải lên'} truyện "${stampedStory.title}" (${
           stampedStory.approvedByParent ? 'Đã duyệt' : 'Bản nháp'
         }, v${stampedStory.contentVersion}).`,
@@ -1912,59 +2073,119 @@ export const BuddyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // 8) PARENT DASHBOARD ACTIONS (Supports Draft, Preview, Approve, Delete Confirmation)
   const saveAndApproveTask = useCallback(
     async (updatedTask: Task, status: ApprovalStatus = 'approved') => {
+      const nowIso = new Date().toISOString();
       const seedTask = createInitialSeedData().tasks.find(
         (st) => st.id === updatedTask.id
       );
 
       let stampedTask: Task;
+      let isTaskCustomized = false;
+      const taskCustomizedFields: string[] = [];
+
       if (!seedTask || updatedTask.sourceType === 'custom') {
+        isTaskCustomized = true;
         stampedTask = {
           ...updatedTask,
           approvalStatus: status,
-          lastApprovedAt: new Date().toISOString(),
+          lastApprovedAt: nowIso,
           sourceType: 'custom',
           contentVersion: SEED_CONTENT_VERSION,
+          baseContentVersion: SEED_CONTENT_VERSION,
           customizedByParent: true,
+          originStatus: 'parent_created',
+          lastEditedAt: nowIso,
         };
       } else {
-        const headerModified =
-          updatedTask.title.trim() !== seedTask.title.trim() ||
-          updatedTask.subtitle.trim() !== seedTask.subtitle.trim() ||
-          updatedTask.steps.length !== seedTask.steps.length;
+        const headerFields = [
+          'title',
+          'subtitle',
+          'category',
+          'iconName',
+          'themeColor',
+          'coverIllustration',
+          'estimatedMinutes',
+        ] as const;
+
+        for (const f of headerFields) {
+          if (String(updatedTask[f] ?? '').trim() !== String(seedTask[f] ?? '').trim()) {
+            taskCustomizedFields.push(f);
+          }
+        }
+
+        const stepFields = [
+          'actionTitle',
+          'instruction',
+          'buddySpeech',
+          'simpleExplanation',
+          'buddyPraise',
+          'illustrationKey',
+        ] as const;
 
         let anyStepModified = false;
         const stampedSteps = updatedTask.steps.map((s, sIdx) => {
           const seedStep =
             seedTask.steps.find((ss) => ss.id === s.id) || seedTask.steps[sIdx];
-          const stepModified =
-            !seedStep ||
-            s.actionTitle.trim() !== seedStep.actionTitle.trim() ||
-            s.instruction.trim() !== seedStep.instruction.trim() ||
-            (s.buddySpeech || '').trim() !== (seedStep.buddySpeech || '').trim() ||
-            s.simpleExplanation.trim() !== seedStep.simpleExplanation.trim() ||
-            s.buddyPraise.trim() !== seedStep.buddyPraise.trim() ||
-            s.illustrationKey !== seedStep.illustrationKey;
 
-          const isCustomStep = Boolean(s.customizedByParent || stepModified);
+          if (!seedStep) {
+            anyStepModified = true;
+            return {
+              ...s,
+              contentVersion: SEED_CONTENT_VERSION,
+              baseContentVersion: SEED_CONTENT_VERSION,
+              customizedByParent: true,
+              customizedFields: ['actionTitle', 'instruction'],
+              originStatus: 'parent_created' as const,
+              lastEditedAt: nowIso,
+            };
+          }
+
+          const stepCustomFields: string[] = [];
+          for (const sf of stepFields) {
+            if (String(s[sf] ?? '').trim() !== String(seedStep[sf] ?? '').trim()) {
+              stepCustomFields.push(sf);
+            }
+          }
+
+          const isCustomStep = stepCustomFields.length > 0;
           if (isCustomStep) {
             anyStepModified = true;
           }
           return {
             ...s,
             contentVersion: SEED_CONTENT_VERSION,
+            baseContentVersion: SEED_CONTENT_VERSION,
             customizedByParent: isCustomStep,
+            customizedFields: stepCustomFields,
+            originStatus: isCustomStep
+              ? ('parent_customized' as const)
+              : ('builtin_approved_only' as const),
+            lastEditedAt: isCustomStep ? nowIso : s.lastEditedAt,
           };
         });
+
+        const updatedStepIds = new Set(updatedTask.steps.map((s) => s.id));
+        const deletedBuiltinStepIds = seedTask.steps
+          .filter((ss) => !updatedStepIds.has(ss.id))
+          .map((ss) => ss.id);
+
+        isTaskCustomized =
+          taskCustomizedFields.length > 0 ||
+          anyStepModified ||
+          deletedBuiltinStepIds.length > 0;
 
         stampedTask = {
           ...updatedTask,
           approvalStatus: status,
-          lastApprovedAt: new Date().toISOString(),
+          lastApprovedAt: nowIso,
           sourceType: 'builtin',
           contentVersion: SEED_CONTENT_VERSION,
-          customizedByParent: Boolean(
-            updatedTask.customizedByParent || headerModified || anyStepModified
-          ),
+          baseContentVersion: SEED_CONTENT_VERSION,
+          customizedByParent: isTaskCustomized,
+          customizedFields: taskCustomizedFields,
+          deletedBuiltinStepIds:
+            deletedBuiltinStepIds.length > 0 ? deletedBuiltinStepIds : undefined,
+          originStatus: isTaskCustomized ? 'parent_customized' : 'builtin_approved_only',
+          lastEditedAt: isTaskCustomized ? nowIso : updatedTask.lastEditedAt,
           steps: stampedSteps,
         };
       }
@@ -1979,8 +2200,15 @@ export const BuddyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         targetType: 'task' as const,
         targetId: stampedTask.id,
         status,
+        actionType:
+          stampedTask.sourceType === 'custom'
+            ? ('creation' as const)
+            : isTaskCustomized
+            ? ('customization' as const)
+            : ('approval' as const),
+        customizedFields: taskCustomizedFields,
         reviewedBy: 'Phụ huynh',
-        reviewedAt: new Date().toISOString(),
+        reviewedAt: nowIso,
         notes: `${status === 'approved' ? 'Phê duyệt' : 'Lưu bản nháp'} nhiệm vụ "${
           stampedTask.title
         }" (${stampedTask.steps.length} bước).`,
@@ -2182,6 +2410,39 @@ export const BuddyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setActiveTab('home');
   }, []);
 
+  const checkForContentUpdates = useCallback(async () => {
+    const res = await appRepository.checkAndSyncContentUpdates(data);
+    setGlobalCharacterVariant(res.data.profile.characterVariant || 'girl');
+    setData(res.data);
+    return {
+      updatedCount: res.updatedCount,
+      preservedCustomCount: res.preservedCustomCount,
+      conflictsCount: res.conflictsCount,
+      status: res.status,
+    };
+  }, [data]);
+
+  const resolveMigrationConflict = useCallback(
+    async (conflictId: string, resolution: 'preserved_stored' | 'applied_seed') => {
+      const nextData = await appRepository.resolveConflict(data, conflictId, resolution);
+      setData(nextData);
+    },
+    [data]
+  );
+
+  const restorePreMigrationBackup = useCallback(async () => {
+    const restored = await appRepository.restoreFromBackup();
+    if (!restored) return false;
+    setGlobalCharacterVariant(restored.profile.characterVariant || 'girl');
+    setData(restored);
+    return true;
+  }, []);
+
+  const versionDiagnostics = useMemo(
+    () => appRepository.getVersionDiagnostics(data),
+    [data]
+  );
+
   const starSummary = calculateStarSummary(data.starLedger, data.pointsPolicy);
 
   return (
@@ -2257,6 +2518,10 @@ export const BuddyProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updateChildProfileName,
         updateChildCharacterVariant,
         resetDemoData,
+        versionDiagnostics,
+        checkForContentUpdates,
+        resolveMigrationConflict,
+        restorePreMigrationBackup,
       }}
     >
       {children}
