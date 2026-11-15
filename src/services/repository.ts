@@ -1,10 +1,12 @@
 import {
+  ApprovalStatus,
   BuddyAppData,
   ContentOriginStatus,
   GrowthExperienceItem,
   GrowthQualityTopic,
   MigrationConflictItem,
   MigrationMetadata,
+  ParentActionType,
   ParentApproval,
   SchoolScheduleConfig,
   Story,
@@ -38,6 +40,10 @@ export interface VersionDiagnostics {
   backupCreatedAt?: string;
   isContentUpToDate: boolean;
   isSchemaUpToDate: boolean;
+  persistedToStorage: boolean;
+  storageReadOnlyRecoveryMode: boolean;
+  lastMigrationStatus?: MigrationMetadata['lastMigrationStatus'];
+  lastErrorMessage?: string;
 }
 
 export interface IDataRepository {
@@ -195,9 +201,19 @@ function matchesHistoricalSystemBaseline(
   seedVal: unknown
 ): boolean {
   if (typeof storedVal === 'string' && typeof seedVal === 'string') {
+    const trimmed = storedVal.trim();
     const normStored = normalizeForLegacySeedMatch(storedVal);
     const normSeed = normalizeForLegacySeedMatch(seedVal);
     if (!normStored || normStored === normSeed) {
+      return true;
+    }
+    // Legacy v1.0-v2.0 step titles prefixed with "Bước X:" or legacy system phrasing
+    if (
+      /^(?:Bước\s*\d+\s*[:.\-–—])/i.test(trimmed) ||
+      /(?:hệ thống cũ|phiên bản cũ|phiên bản trước|bản chuẩn cũ|lời dẫn cũ|lời thoại cũ)/i.test(
+        trimmed
+      )
+    ) {
       return true;
     }
     const signatures = HISTORICAL_SYSTEM_SIGNATURES[entityId] || [];
@@ -220,7 +236,7 @@ function matchesHistoricalSystemBaseline(
   return JSON.stringify(storedVal) === JSON.stringify(seedVal);
 }
 
-function areValuesEqual(a: unknown, b: unknown): boolean {
+export function areValuesEqual(a: unknown, b: unknown): boolean {
   if (typeof a === 'string' && typeof b === 'string') {
     return a.trim() === b.trim();
   }
@@ -268,6 +284,7 @@ type FieldDecision = 'use_seed' | 'preserve_custom' | 'preserve_unresolved';
 /**
  * Core field-level decision engine (Sections 2.2, 2.3, 4.1-4.3, 6.3):
  * Never uses inequality with the NEWEST seed alone as proof of parent customization.
+ * Also heals legacy false-positive `customizedByParent: true` items caused by old approval flows.
  */
 function resolveFieldSyncDecision(params: {
   entityId: string;
@@ -280,6 +297,7 @@ function resolveFieldSyncDecision(params: {
   hasItemVersion: boolean;
   hasKnownRootVersion: boolean;
   hasExplicitCustomLog: boolean;
+  hasApprovalOnlyLog?: boolean;
 }): FieldDecision {
   const {
     entityId,
@@ -292,33 +310,41 @@ function resolveFieldSyncDecision(params: {
     hasItemVersion,
     hasKnownRootVersion,
     hasExplicitCustomLog,
+    hasApprovalOnlyLog = false,
   } = params;
 
   if (storedValue === undefined || storedValue === null || storedValue === '') {
     return 'use_seed';
   }
 
-  // 1. If explicit field-level customization list exists (v2.2+), trust it authoritatively:
+  // 1. If stored value already equals current seed or matches known historical system baselines,
+  // it is unmodified system content -> upgrade to latest seed (heals false-positive customized flags).
+  if (
+    areValuesEqual(storedValue, seedValue) ||
+    matchesHistoricalSystemBaseline(entityId, storedValue, seedValue)
+  ) {
+    return 'use_seed';
+  }
+
+  // 2. If explicit field-level customization list exists (v2.2+), trust it authoritatively:
   // Only fields in `customizedFields` are parent-edited; all other fields receive new seed updates.
   if (Array.isArray(customizedFields)) {
     return customizedFields.includes(fieldName) ? 'preserve_custom' : 'use_seed';
   }
 
-  // 2. If item was previously marked as unresolved legacy origin, keep it unresolved until parent decides
+  // 3. If item was previously marked as unresolved legacy origin, keep it unresolved until parent decides
   if (originStatus === 'legacy_unresolved') {
-    return areValuesEqual(storedValue, seedValue) ? 'use_seed' : 'preserve_unresolved';
+    return 'preserve_unresolved';
   }
 
-  // 3. If explicitly marked as NOT customized by parent, always upgrade to latest system seed
-  if (customizedByParent === false) {
-    return 'use_seed';
-  }
-
-  // 4. If stored value already equals current seed or matches known historical system baselines,
-  // it is unmodified system content -> upgrade to latest seed.
+  // 4. If explicitly marked as NOT customized by parent, OR `originStatus` is `builtin_approved_only`,
+  // OR legacy item had `customizedByParent: true` (without `customizedFields`) from a pure approval event
+  // (`hasApprovalOnlyLog && !hasExplicitCustomLog`), heal the false positive and upgrade to latest seed!
   if (
-    areValuesEqual(storedValue, seedValue) ||
-    matchesHistoricalSystemBaseline(entityId, storedValue, seedValue)
+    customizedByParent === false ||
+    originStatus === 'builtin_approved_only' ||
+    originStatus === 'builtin_unmodified' ||
+    (customizedByParent === true && hasApprovalOnlyLog && !hasExplicitCustomLog)
   ) {
     return 'use_seed';
   }
@@ -508,6 +534,7 @@ export function syncBuiltinAndCustomTasks(
         hasItemVersion: hasTaskItemVersion,
         hasKnownRootVersion,
         hasExplicitCustomLog: hasTaskExplicitCustomLog,
+        hasApprovalOnlyLog: hasTaskApprovalOnly,
       });
 
       if (decision === 'preserve_custom') {
@@ -594,10 +621,11 @@ export function syncBuiltinAndCustomTasks(
           seedValue: seedStep[sField],
           customizedByParent: storedStep.customizedByParent,
           customizedFields: storedStep.customizedFields,
-          originStatus: storedStep.originStatus,
+          originStatus: storedStep.originStatus ?? t.originStatus,
           hasItemVersion: hasStepVersion,
           hasKnownRootVersion,
-          hasExplicitCustomLog: false,
+          hasExplicitCustomLog: hasTaskExplicitCustomLog,
+          hasApprovalOnlyLog: hasTaskApprovalOnly,
         });
 
         if (decision === 'preserve_custom') {
@@ -859,6 +887,7 @@ export function syncStories(
         hasItemVersion: hasStoryItemVersion,
         hasKnownRootVersion,
         hasExplicitCustomLog: hasStoryExplicitCustomLog,
+        hasApprovalOnlyLog: hasStoryApprovalOnly,
       });
 
       if (decision === 'preserve_custom') {
@@ -1080,6 +1109,7 @@ export function syncGrowthTopics(
         hasItemVersion: hasTopicItemVersion,
         hasKnownRootVersion,
         hasExplicitCustomLog: hasTopicExplicitCustomLog,
+        hasApprovalOnlyLog: hasTopicApprovalOnly,
       });
 
       if (decision === 'preserve_custom') {
@@ -1148,7 +1178,8 @@ export function syncGrowthTopics(
           originStatus: savedExp.originStatus ?? savedTopic.originStatus,
           hasItemVersion: hasExpVersion,
           hasKnownRootVersion,
-          hasExplicitCustomLog: false,
+          hasExplicitCustomLog: hasTopicExplicitCustomLog,
+          hasApprovalOnlyLog: hasTopicApprovalOnly,
         });
 
         if (decision === 'preserve_custom') {
@@ -1856,6 +1887,507 @@ export function resolveMigrationConflictInMemory(
   };
 }
 
+/**
+ * Section 1 Hardening: Pure diff helpers for Parent Save & Approve flows.
+ * Never concludes that a parent customized content merely because the form values differ from `seedData.ts`.
+ * Distinguishes:
+ * - Content already stored BEFORE opening the form (`existingTask` / `existingTopic` / `existingStory`)
+ * - Fields that ACTUALLY changed during the editing session (`!areValuesEqual(updated[f], baseline[f])`)
+ * - Pure approval actions (`sessionEditedFields.length === 0`)
+ */
+export function prepareTaskForParentSave(
+  existingTask: Task | undefined,
+  updatedTask: Task,
+  status: ApprovalStatus = 'approved',
+  seedTaskInput?: Task
+): {
+  stampedTask: Task;
+  sessionEditedFields: string[];
+  actionType: ParentActionType;
+} {
+  const nowIso = new Date().toISOString();
+  const seedTask =
+    seedTaskInput ?? createInitialSeedData().tasks.find((st) => st.id === updatedTask.id);
+
+  if (!seedTask || updatedTask.sourceType === 'custom' || existingTask?.sourceType === 'custom') {
+    const stampedCustom: Task = {
+      ...updatedTask,
+      approvalStatus: status,
+      lastApprovedAt: nowIso,
+      sourceType: 'custom',
+      contentVersion: SEED_CONTENT_VERSION,
+      baseContentVersion: SEED_CONTENT_VERSION,
+      customizedByParent: true,
+      originStatus: 'parent_created',
+      lastEditedAt: nowIso,
+    };
+    return {
+      stampedTask: stampedCustom,
+      sessionEditedFields: ['custom_task'],
+      actionType: existingTask ? 'customization' : 'creation',
+    };
+  }
+
+  const baselineTask = existingTask || seedTask;
+  const prevTaskCustomFields = Array.isArray(existingTask?.customizedFields)
+    ? existingTask.customizedFields
+    : [];
+  const sessionEditedFields: string[] = [];
+  const taskCustomizedFields: string[] = [];
+
+  const headerFields = [
+    'title',
+    'subtitle',
+    'category',
+    'iconName',
+    'themeColor',
+    'coverIllustration',
+    'estimatedMinutes',
+  ] as const;
+
+  for (const f of headerFields) {
+    const changedInSession = !areValuesEqual(updatedTask[f], baselineTask[f]);
+    const wasPreviouslyCustom = prevTaskCustomFields.includes(f);
+
+    if (changedInSession) {
+      sessionEditedFields.push(f);
+      if (!areValuesEqual(updatedTask[f], seedTask[f])) {
+        taskCustomizedFields.push(f);
+      }
+    } else if (wasPreviouslyCustom && !areValuesEqual(updatedTask[f], seedTask[f])) {
+      taskCustomizedFields.push(f);
+    }
+  }
+
+  const stepFields = [
+    'actionTitle',
+    'instruction',
+    'buddySpeech',
+    'simpleExplanation',
+    'buddyPraise',
+    'illustrationKey',
+  ] as const;
+
+  let anyStepCustomized = false;
+  const stampedSteps: TaskStep[] = updatedTask.steps.map((s, sIdx) => {
+    const existingStep =
+      existingTask?.steps.find((es) => es.id === s.id) ||
+      (existingTask ? existingTask.steps.find((es) => findMatchingSeedStep(es, seedTask)?.id === findMatchingSeedStep(s, seedTask)?.id) : undefined) ||
+      existingTask?.steps[sIdx];
+    const seedStep =
+      seedTask.steps.find((ss) => ss.id === s.id) || findMatchingSeedStep(s, seedTask);
+
+    if (!seedStep) {
+      anyStepCustomized = true;
+      if (!existingStep) {
+        sessionEditedFields.push(`step:${s.id}`);
+      } else {
+        for (const sf of stepFields) {
+          if (!areValuesEqual(s[sf], existingStep[sf])) {
+            sessionEditedFields.push(`${s.id}.${sf}`);
+          }
+        }
+      }
+      return {
+        ...s,
+        contentVersion: SEED_CONTENT_VERSION,
+        baseContentVersion: SEED_CONTENT_VERSION,
+        customizedByParent: true,
+        customizedFields: s.customizedFields ?? ['actionTitle', 'instruction'],
+        originStatus: 'parent_created' as const,
+        lastEditedAt: nowIso,
+      };
+    }
+
+    const baselineStep = existingStep || seedStep;
+    const prevStepCustomFields = Array.isArray(existingStep?.customizedFields)
+      ? existingStep.customizedFields
+      : [];
+    const stepCustomFields: string[] = [];
+    let stepEditedInSession = false;
+
+    for (const sf of stepFields) {
+      const changedStepField = !areValuesEqual(s[sf], baselineStep[sf]);
+      const wasStepFieldCustom = prevStepCustomFields.includes(sf);
+
+      if (changedStepField) {
+        stepEditedInSession = true;
+        sessionEditedFields.push(`${seedStep.id}.${sf}`);
+        if (!areValuesEqual(s[sf], seedStep[sf])) {
+          stepCustomFields.push(sf);
+        }
+      } else if (wasStepFieldCustom && !areValuesEqual(s[sf], seedStep[sf])) {
+        stepCustomFields.push(sf);
+      }
+    }
+
+    const isCustomStep = stepCustomFields.length > 0;
+    if (isCustomStep) {
+      anyStepCustomized = true;
+    }
+
+    const stepOrigin: ContentOriginStatus = isCustomStep
+      ? 'parent_customized'
+      : existingStep?.originStatus === 'legacy_unresolved'
+      ? 'legacy_unresolved'
+      : status === 'approved'
+      ? 'builtin_approved_only'
+      : existingStep?.originStatus || 'builtin_unmodified';
+
+    return {
+      ...s,
+      contentVersion: existingStep?.contentVersion ?? SEED_CONTENT_VERSION,
+      baseContentVersion: existingStep?.baseContentVersion ?? SEED_CONTENT_VERSION,
+      customizedByParent: isCustomStep,
+      customizedFields: stepCustomFields,
+      originStatus: stepOrigin,
+      lastEditedAt: stepEditedInSession ? nowIso : existingStep?.lastEditedAt,
+    };
+  });
+
+  // Only treat a built-in step as deleted by parent if it was present in `baselineTask.steps`
+  // and removed in `updatedTask.steps` (or was already in `existingTask.deletedBuiltinStepIds`)
+  const updatedCanonicalStepIds = new Set(
+    updatedTask.steps.map((s) => findMatchingSeedStep(s, seedTask)?.id || s.id)
+  );
+  const baselineCanonicalStepIds = new Set(
+    baselineTask.steps.map((s) => findMatchingSeedStep(s, seedTask)?.id || s.id)
+  );
+  const prevDeletedIds = new Set(existingTask?.deletedBuiltinStepIds || []);
+  for (const seedSt of seedTask.steps) {
+    if (baselineCanonicalStepIds.has(seedSt.id) && !updatedCanonicalStepIds.has(seedSt.id)) {
+      prevDeletedIds.add(seedSt.id);
+      sessionEditedFields.push(`deletedStep:${seedSt.id}`);
+    }
+  }
+  const deletedBuiltinStepIds = Array.from(prevDeletedIds);
+
+  const didEditInSession = sessionEditedFields.length > 0;
+  const isTaskCustomized =
+    taskCustomizedFields.length > 0 ||
+    anyStepCustomized ||
+    deletedBuiltinStepIds.length > 0;
+
+  const taskOrigin: ContentOriginStatus = isTaskCustomized
+    ? 'parent_customized'
+    : existingTask?.originStatus === 'legacy_unresolved'
+    ? 'legacy_unresolved'
+    : status === 'approved'
+    ? 'builtin_approved_only'
+    : existingTask?.originStatus || 'builtin_unmodified';
+
+  const stampedTask: Task = {
+    ...updatedTask,
+    approvalStatus: status,
+    lastApprovedAt: nowIso,
+    sourceType: 'builtin',
+    contentVersion: existingTask?.contentVersion ?? SEED_CONTENT_VERSION,
+    baseContentVersion: existingTask?.baseContentVersion ?? SEED_CONTENT_VERSION,
+    customizedByParent: isTaskCustomized,
+    customizedFields: taskCustomizedFields,
+    deletedBuiltinStepIds:
+      deletedBuiltinStepIds.length > 0 ? deletedBuiltinStepIds : undefined,
+    originStatus: taskOrigin,
+    lastEditedAt: didEditInSession ? nowIso : existingTask?.lastEditedAt,
+    steps: stampedSteps,
+  };
+
+  return {
+    stampedTask,
+    sessionEditedFields,
+    actionType: didEditInSession ? 'customization' : 'approval',
+  };
+}
+
+export function prepareGrowthTopicForParentSave(
+  existingTopic: GrowthQualityTopic | undefined,
+  updatedTopic: GrowthQualityTopic,
+  seedTopicInput?: GrowthQualityTopic
+): {
+  stampedTopic: GrowthQualityTopic;
+  sessionEditedFields: string[];
+  actionType: ParentActionType;
+} {
+  const nowIso = new Date().toISOString();
+  const seedTopic =
+    seedTopicInput ??
+    createInitialSeedData().growthTopics.find(
+      (st) => st.id === updatedTopic.id || st.slug === updatedTopic.slug
+    );
+
+  if (!seedTopic || updatedTopic.isParentUploaded || existingTopic?.isParentUploaded) {
+    const stampedCustom: GrowthQualityTopic = {
+      ...updatedTopic,
+      version: (existingTopic?.version || 1) + 1,
+      contentVersion: SEED_CONTENT_VERSION,
+      baseContentVersion: SEED_CONTENT_VERSION,
+      customizedByParent: true,
+      originStatus: 'parent_created',
+      lastEditedAt: nowIso,
+      updatedAt: nowIso,
+    };
+    return {
+      stampedTopic: stampedCustom,
+      sessionEditedFields: ['custom_topic'],
+      actionType: existingTopic ? 'customization' : 'upload',
+    };
+  }
+
+  const baselineTopic = existingTopic || seedTopic;
+  const prevTopicCustomFields = Array.isArray(existingTopic?.customizedFields)
+    ? existingTopic.customizedFields
+    : [];
+  const sessionEditedFields: string[] = [];
+  const topicCustomizedFields: string[] = [];
+
+  const topicHeaderFields = [
+    'title',
+    'subtitle',
+    'landmarkName',
+    'themeColor',
+    'illustrationKey',
+  ] as const;
+
+  for (const f of topicHeaderFields) {
+    const changedInSession = !areValuesEqual(updatedTopic[f], baselineTopic[f]);
+    const wasPreviouslyCustom = prevTopicCustomFields.includes(f);
+
+    if (changedInSession) {
+      sessionEditedFields.push(f);
+      if (!areValuesEqual(updatedTopic[f], seedTopic[f])) {
+        topicCustomizedFields.push(f);
+      }
+    } else if (wasPreviouslyCustom && !areValuesEqual(updatedTopic[f], seedTopic[f])) {
+      topicCustomizedFields.push(f);
+    }
+  }
+
+  const expFields = [
+    'title',
+    'promptOrStory',
+    'buddySpeech',
+    'choices',
+    'choiceFeedbacks',
+    'recommendedChoiceIndices',
+    'actionSuggestion',
+    'buddyWarmFeedback',
+  ] as const;
+
+  let anyExpCustomized = false;
+  const mergedExperiences: GrowthExperienceItem[] = updatedTopic.experiences.map((exp, idx) => {
+    const prevExp =
+      existingTopic?.experiences.find((e) => e.id === exp.id) ||
+      existingTopic?.experiences.find((e) => e.type === exp.type) ||
+      existingTopic?.experiences[idx];
+    const seedExp =
+      seedTopic.experiences.find((se) => se.id === exp.id) ||
+      seedTopic.experiences.find((se) => se.type === exp.type);
+
+    if (!seedExp) {
+      anyExpCustomized = true;
+      sessionEditedFields.push(`exp:${exp.id}`);
+      return {
+        ...exp,
+        contentVersion: SEED_CONTENT_VERSION,
+        baseContentVersion: SEED_CONTENT_VERSION,
+        customizedByParent: true,
+        customizedFields: exp.customizedFields ?? ['title', 'promptOrStory'],
+        originStatus: 'parent_created' as const,
+        lastEditedAt: nowIso,
+      };
+    }
+
+    const baselineExp = prevExp || seedExp;
+    const prevExpCustomFields = Array.isArray(prevExp?.customizedFields)
+      ? prevExp.customizedFields
+      : [];
+    const expCustomizedFields: string[] = [];
+    let expEditedInSession = false;
+
+    for (const ef of expFields) {
+      const changedExpField = !areValuesEqual(exp[ef], baselineExp[ef]);
+      const wasExpFieldCustom = prevExpCustomFields.includes(ef);
+
+      if (changedExpField) {
+        expEditedInSession = true;
+        sessionEditedFields.push(`${seedExp.id}.${ef}`);
+        if (!areValuesEqual(exp[ef], seedExp[ef])) {
+          expCustomizedFields.push(ef);
+        }
+      } else if (wasExpFieldCustom && !areValuesEqual(exp[ef], seedExp[ef])) {
+        expCustomizedFields.push(ef);
+      }
+    }
+
+    const isExpCustom = expCustomizedFields.length > 0;
+    if (isExpCustom) anyExpCustomized = true;
+
+    return {
+      ...exp,
+      status: prevExp?.status ?? exp.status,
+      childResponse: prevExp?.childResponse ?? exp.childResponse,
+      selectedChoices: prevExp?.selectedChoices ?? exp.selectedChoices,
+      emotionTag: prevExp?.emotionTag ?? exp.emotionTag,
+      realLifeConfirmed: prevExp?.realLifeConfirmed ?? exp.realLifeConfirmed,
+      lastUpdatedAt: prevExp?.lastUpdatedAt ?? exp.lastUpdatedAt,
+      contentVersion: prevExp?.contentVersion ?? SEED_CONTENT_VERSION,
+      baseContentVersion: prevExp?.baseContentVersion ?? SEED_CONTENT_VERSION,
+      customizedByParent: isExpCustom,
+      customizedFields: expCustomizedFields,
+      originStatus: isExpCustom
+        ? ('parent_customized' as const)
+        : updatedTopic.approvalStatus === 'approved'
+        ? ('builtin_approved_only' as const)
+        : prevExp?.originStatus || ('builtin_unmodified' as const),
+      lastEditedAt: expEditedInSession ? nowIso : prevExp?.lastEditedAt,
+    };
+  });
+
+  const didEditInSession = sessionEditedFields.length > 0;
+  const isTopicCustomized = topicCustomizedFields.length > 0 || anyExpCustomized;
+
+  const stampedTopic: GrowthQualityTopic = {
+    ...updatedTopic,
+    version: didEditInSession ? (existingTopic?.version || 1) + 1 : existingTopic?.version || 1,
+    contentVersion: existingTopic?.contentVersion ?? SEED_CONTENT_VERSION,
+    baseContentVersion: existingTopic?.baseContentVersion ?? SEED_CONTENT_VERSION,
+    customizedByParent: isTopicCustomized,
+    customizedFields: topicCustomizedFields,
+    originStatus: isTopicCustomized
+      ? 'parent_customized'
+      : updatedTopic.approvalStatus === 'approved'
+      ? 'builtin_approved_only'
+      : existingTopic?.originStatus || 'builtin_unmodified',
+    lastEditedAt: didEditInSession ? nowIso : existingTopic?.lastEditedAt,
+    experiences: mergedExperiences,
+    updatedAt: nowIso,
+  };
+
+  return {
+    stampedTopic,
+    sessionEditedFields,
+    actionType: didEditInSession ? 'customization' : 'approval',
+  };
+}
+
+export function prepareStoryForParentSave(
+  existingStory: Story | undefined,
+  updatedStory: Story,
+  fallbackOrderIndex = 1,
+  seedStoryInput?: Story
+): {
+  stampedStory: Story;
+  sessionEditedFields: string[];
+  actionType: ParentActionType;
+} {
+  const nowIso = new Date().toISOString();
+  const seedStory =
+    seedStoryInput ?? createInitialSeedData().stories.find((ss) => ss.id === updatedStory.id);
+
+  const isParentUploadedOrCustom = Boolean(
+    !seedStory ||
+      updatedStory.isParentUploaded ||
+      existingStory?.isParentUploaded ||
+      (updatedStory.sourceType && updatedStory.sourceType !== 'builtin') ||
+      (existingStory?.sourceType && existingStory.sourceType !== 'builtin')
+  );
+
+  if (isParentUploadedOrCustom || !seedStory) {
+    const contentChanged =
+      existingStory &&
+      (!areValuesEqual(existingStory.title, updatedStory.title) ||
+        !areValuesEqual(existingStory.paragraphs, updatedStory.paragraphs));
+
+    const stampedCustom: Story = {
+      ...updatedStory,
+      contentVersion: contentChanged
+        ? (existingStory?.contentVersion || 1) + 1
+        : updatedStory.contentVersion || existingStory?.contentVersion || 1,
+      baseContentVersion: 1,
+      customizedByParent: true,
+      originStatus: 'parent_created',
+      lastEditedAt: nowIso,
+      orderIndex: updatedStory.orderIndex ?? existingStory?.orderIndex ?? fallbackOrderIndex,
+      approvalStatus: updatedStory.approvedByParent
+        ? 'approved'
+        : updatedStory.approvalStatus || 'draft',
+      audioStatus: 'none',
+      audioAssetId: undefined,
+      audioUrl: undefined,
+    };
+    return {
+      stampedStory: stampedCustom,
+      sessionEditedFields: ['custom_story'],
+      actionType: existingStory ? 'customization' : 'upload',
+    };
+  }
+
+  const baselineStory = existingStory || seedStory;
+  const prevStoryCustomFields = Array.isArray(existingStory?.customizedFields)
+    ? existingStory.customizedFields
+    : [];
+  const sessionEditedFields: string[] = [];
+  const storyCustomizedFields: string[] = [];
+
+  const storyContentFields = [
+    'title',
+    'category',
+    'summary',
+    'durationMinutes',
+    'ageRecommendation',
+    'coverTheme',
+    'illustrationType',
+    'paragraphs',
+    'moralLesson',
+    'reflectionQuestion',
+    'reflectionSuggestions',
+  ] as const;
+
+  for (const f of storyContentFields) {
+    const changedInSession = !areValuesEqual(updatedStory[f], baselineStory[f]);
+    const wasPreviouslyCustom = prevStoryCustomFields.includes(f);
+
+    if (changedInSession) {
+      sessionEditedFields.push(f);
+      if (!areValuesEqual(updatedStory[f], seedStory[f])) {
+        storyCustomizedFields.push(f);
+      }
+    } else if (wasPreviouslyCustom && !areValuesEqual(updatedStory[f], seedStory[f])) {
+      storyCustomizedFields.push(f);
+    }
+  }
+
+  const didEditInSession = sessionEditedFields.length > 0;
+  const isCustomized = storyCustomizedFields.length > 0;
+
+  const stampedStory: Story = {
+    ...updatedStory,
+    contentVersion: existingStory?.contentVersion ?? SEED_CONTENT_VERSION,
+    baseContentVersion: existingStory?.baseContentVersion ?? SEED_CONTENT_VERSION,
+    customizedByParent: isCustomized,
+    customizedFields: storyCustomizedFields,
+    originStatus: isCustomized
+      ? 'parent_customized'
+      : updatedStory.approvedByParent
+      ? 'builtin_approved_only'
+      : existingStory?.originStatus || 'builtin_unmodified',
+    lastEditedAt: didEditInSession ? nowIso : existingStory?.lastEditedAt,
+    orderIndex: updatedStory.orderIndex ?? existingStory?.orderIndex ?? fallbackOrderIndex,
+    approvalStatus: updatedStory.approvedByParent
+      ? 'approved'
+      : updatedStory.approvalStatus || 'draft',
+    audioStatus: 'none',
+    audioAssetId: undefined,
+    audioUrl: undefined,
+  };
+
+  return {
+    stampedStory,
+    sessionEditedFields,
+    actionType: didEditInSession ? 'customization' : 'approval',
+  };
+}
+
 interface StoredBackupEnvelope {
   savedAt: string;
   schemaVersion?: number;
@@ -1868,11 +2400,18 @@ interface StoredBackupEnvelope {
  * LocalDemoRepository
  * Persists state in localStorage (`buddy_ai_personal_buddy_state_v1`) with controlled
  * v2.2 migration, bounded pre-migration backup (`buddy_ai_personal_buddy_backup_v1`),
- * and 4-layer separation (System Content Library, Family/Child Profile, Approvals & Customizations, Progress & Rewards).
+ * write-failure detection (`storage_write_failed`), and corrupted storage read-only protection (`corrupted_unrecoverable`).
  */
 export class LocalDemoRepository implements IDataRepository {
+  private corruptedStorageReadOnly = false;
+  private lastStorageWriteError: string | null = null;
+
   getStorageMode(): StorageMode {
     return 'local-demo';
+  }
+
+  isInCorruptedReadOnlyMode(): boolean {
+    return this.corruptedStorageReadOnly;
   }
 
   private readBackupEnvelope(): StoredBackupEnvelope | null {
@@ -1920,9 +2459,12 @@ export class LocalDemoRepository implements IDataRepository {
     }
 
     let raw: string | null = null;
+    let parsedCandidate: Partial<BuddyAppData> | null = null;
+
     try {
       raw = window.localStorage.getItem(STORAGE_KEY);
       if (!raw) {
+        this.corruptedStorageReadOnly = false;
         const freshSeed: BuddyAppData = {
           ...seed,
           migrationMetadata: {
@@ -1931,6 +2473,8 @@ export class LocalDemoRepository implements IDataRepository {
             schemaVersion: BUDDY_DATA_SCHEMA_VERSION,
             lastMigratedAt: new Date().toISOString(),
             lastMigrationStatus: 'fresh_install',
+            persistedToStorage: true,
+            storageReadOnlyRecoveryMode: false,
             backupAvailable: false,
             updatedBuiltinTasksCount: seed.tasks.length,
             updatedBuiltinStoriesCount: seed.stories.length,
@@ -1941,13 +2485,22 @@ export class LocalDemoRepository implements IDataRepository {
         };
         try {
           window.localStorage.setItem(STORAGE_KEY, JSON.stringify(freshSeed));
-        } catch {
-          // Ignore quota error
+          this.lastStorageWriteError = null;
+        } catch (writeErr) {
+          const msg = writeErr instanceof Error ? writeErr.message : 'QuotaExceededError';
+          this.lastStorageWriteError = msg;
+          freshSeed.migrationMetadata = {
+            ...freshSeed.migrationMetadata!,
+            lastMigrationStatus: 'storage_write_failed',
+            persistedToStorage: false,
+            lastErrorMessage: `Không thể ghi dữ liệu khởi tạo vào Local Storage (${msg}).`,
+          };
         }
         return freshSeed;
       }
 
       const parsed = JSON.parse(raw) as Partial<BuddyAppData>;
+      parsedCandidate = parsed;
       const prevContentVer = parsed.contentVersion ?? parsed.seedContentVersion ?? 0;
       const prevSchemaVer = parsed.schemaVersion ?? 1;
       const isVersionUpgrade =
@@ -1970,23 +2523,41 @@ export class LocalDemoRepository implements IDataRepository {
         backupCreatedAt: backupMeta?.savedAt,
       });
 
-      // Step 6 & 7: Only persist after validation inside `runControlledDataMigration` succeeds
+      this.corruptedStorageReadOnly = false;
+
+      // Step 6 & 7: Attempt to persist migrated state to Local Storage.
+      // Section 2 Hardening: If writing to Local Storage fails, NEVER mark migration as saved/synced!
       try {
+        migrated.migrationMetadata = {
+          ...migrated.migrationMetadata!,
+          persistedToStorage: true,
+          storageReadOnlyRecoveryMode: false,
+        };
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
-      } catch {
-        // Ignore storage quota errors during automatic migration write
+        this.lastStorageWriteError = null;
+      } catch (writeErr) {
+        const msg = writeErr instanceof Error ? writeErr.message : 'QuotaExceededError';
+        this.lastStorageWriteError = msg;
+        migrated.migrationMetadata = {
+          ...migrated.migrationMetadata!,
+          lastMigrationStatus: 'storage_write_failed',
+          persistedToStorage: false,
+          storageReadOnlyRecoveryMode: false,
+          lastErrorMessage: `Đồng bộ thành công trong bộ nhớ nhưng không thể lưu vào Local Storage (${msg}). Dữ liệu gốc và bản sao lưu vẫn được giữ nguyên.`,
+        };
       }
 
       return migrated;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'MIGRATION_FAILED';
       // Step 8: If migration or parsing fails mid-way, NEVER overwrite `STORAGE_KEY` with a fresh seed!
-      // Attempt to recover previous valid data from `raw` or from `BACKUP_STORAGE_KEY`.
+      // Attempt to recover previous valid data from `BACKUP_STORAGE_KEY`.
       const backup = this.readBackupEnvelope();
       if (backup?.rawState) {
         try {
           const recovered = JSON.parse(backup.rawState) as BuddyAppData;
           if (recovered && recovered.profile && Array.isArray(recovered.tasks)) {
+            this.corruptedStorageReadOnly = false;
             return {
               ...recovered,
               migrationMetadata: {
@@ -1995,6 +2566,8 @@ export class LocalDemoRepository implements IDataRepository {
                 schemaVersion: recovered.schemaVersion || 1,
                 lastMigratedAt: new Date().toISOString(),
                 lastMigrationStatus: 'failed_kept_previous',
+                persistedToStorage: true,
+                storageReadOnlyRecoveryMode: false,
                 lastErrorMessage: errorMsg,
                 backupAvailable: true,
                 backupCreatedAt: backup.savedAt,
@@ -2011,17 +2584,57 @@ export class LocalDemoRepository implements IDataRepository {
         }
       }
 
+      // Section 2 Hardening: When data in Local Storage is corrupted and NO valid backup exists:
+      // 1. NEVER overwrite `STORAGE_KEY` in localStorage with default `seed`.
+      // 2. Activate `corruptedStorageReadOnly = true` so subsequent `saveAppData()` calls cannot overwrite the raw corrupted key.
+      // 3. Salvage any intact child profile or star/progress arrays if `parsedCandidate` was partially parsed.
+      this.corruptedStorageReadOnly = true;
+
+      const salvagedProfile =
+        parsedCandidate &&
+        typeof parsedCandidate === 'object' &&
+        parsedCandidate.profile &&
+        typeof parsedCandidate.profile.displayName === 'string'
+          ? { ...seed.profile, ...parsedCandidate.profile }
+          : seed.profile;
+
+      const salvagedStarLedger =
+        parsedCandidate &&
+        typeof parsedCandidate === 'object' &&
+        Array.isArray(parsedCandidate.starLedger)
+          ? parsedCandidate.starLedger
+          : seed.starLedger;
+
+      const salvagedTaskRuns =
+        parsedCandidate &&
+        typeof parsedCandidate === 'object' &&
+        Array.isArray(parsedCandidate.taskRuns)
+          ? parsedCandidate.taskRuns
+          : seed.taskRuns;
+
+      const salvagedGrowthLogs =
+        parsedCandidate &&
+        typeof parsedCandidate === 'object' &&
+        Array.isArray(parsedCandidate.growthLogs)
+          ? parsedCandidate.growthLogs
+          : seed.growthLogs;
+
       return {
         ...seed,
+        profile: salvagedProfile,
+        starLedger: salvagedStarLedger,
+        taskRuns: salvagedTaskRuns,
+        growthLogs: salvagedGrowthLogs,
         migrationMetadata: {
           appVersion: BUDDY_APP_VERSION,
           contentVersion: SEED_CONTENT_VERSION,
           schemaVersion: BUDDY_DATA_SCHEMA_VERSION,
           lastMigratedAt: new Date().toISOString(),
-          lastMigrationStatus: 'failed_kept_previous',
-          lastErrorMessage: errorMsg,
-          backupAvailable: Boolean(backup),
-          backupCreatedAt: backup?.savedAt,
+          lastMigrationStatus: 'corrupted_unrecoverable',
+          persistedToStorage: false,
+          storageReadOnlyRecoveryMode: true,
+          lastErrorMessage: `Dữ liệu lưu trữ bị hỏng (${errorMsg}) và không có bản sao lưu. Đã bật Chế độ Bảo vệ (Không tự động ghi đè dữ liệu gốc trong Local Storage).`,
+          backupAvailable: false,
           updatedBuiltinTasksCount: 0,
           updatedBuiltinStoriesCount: 0,
           updatedBuiltinTopicsCount: 0,
@@ -2034,16 +2647,58 @@ export class LocalDemoRepository implements IDataRepository {
 
   async saveAppData(data: BuddyAppData): Promise<void> {
     if (typeof window === 'undefined') return;
+
+    // Section 2 Hardening: Never overwrite corrupted original `STORAGE_KEY` while in read-only protection mode
+    if (
+      this.corruptedStorageReadOnly ||
+      data.migrationMetadata?.storageReadOnlyRecoveryMode === true ||
+      data.migrationMetadata?.lastMigrationStatus === 'corrupted_unrecoverable'
+    ) {
+      return;
+    }
+
     try {
+      const nextMigrationMeta: MigrationMetadata | undefined = data.migrationMetadata
+        ? {
+            ...data.migrationMetadata,
+            persistedToStorage: true,
+            storageReadOnlyRecoveryMode: false,
+            lastMigrationStatus:
+              data.migrationMetadata.lastMigrationStatus === 'storage_write_failed'
+                ? 'success'
+                : data.migrationMetadata.lastMigrationStatus,
+            lastErrorMessage:
+              data.migrationMetadata.lastMigrationStatus === 'storage_write_failed'
+                ? undefined
+                : data.migrationMetadata.lastErrorMessage,
+          }
+        : undefined;
+
       const stamped: BuddyAppData = {
         ...data,
         appVersion: data.appVersion || BUDDY_APP_VERSION,
         contentVersion: data.contentVersion || SEED_CONTENT_VERSION,
         schemaVersion: data.schemaVersion || BUDDY_DATA_SCHEMA_VERSION,
         seedContentVersion: data.contentVersion || data.seedContentVersion || SEED_CONTENT_VERSION,
+        migrationMetadata: nextMigrationMeta,
       };
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stamped));
+      this.lastStorageWriteError = null;
+      if (data.migrationMetadata) {
+        data.migrationMetadata.persistedToStorage = true;
+        if (data.migrationMetadata.lastMigrationStatus === 'storage_write_failed') {
+          data.migrationMetadata.lastMigrationStatus = 'success';
+          data.migrationMetadata.lastErrorMessage = undefined;
+        }
+      }
     } catch (err) {
+      const msg = err instanceof Error ? err.message : 'QuotaExceededError';
+      this.lastStorageWriteError = msg;
+      if (data.migrationMetadata) {
+        data.migrationMetadata.lastMigrationStatus = 'storage_write_failed';
+        data.migrationMetadata.persistedToStorage = false;
+        data.migrationMetadata.lastErrorMessage = `Không thể lưu dữ liệu vào Local Storage (${msg}).`;
+      }
       console.error('Không thể lưu dữ liệu vào bộ nhớ trình duyệt:', err);
     }
   }
@@ -2056,8 +2711,24 @@ export class LocalDemoRepository implements IDataRepository {
     status: MigrationMetadata['lastMigrationStatus'];
   }> {
     const seed = createInitialSeedData();
-    const sourceData: Partial<BuddyAppData> = currentData || (await this.loadAppData());
     const backup = this.readBackupEnvelope();
+
+    // If no in-memory data was passed or previous load failed to persist, attempt to read from storage
+    const sourceData: Partial<BuddyAppData> = currentData || (await this.loadAppData());
+
+    if (
+      this.corruptedStorageReadOnly ||
+      sourceData.migrationMetadata?.lastMigrationStatus === 'corrupted_unrecoverable'
+    ) {
+      const currentAsFull = sourceData as BuddyAppData;
+      return {
+        data: currentAsFull,
+        updatedCount: 0,
+        preservedCustomCount: 0,
+        conflictsCount: 0,
+        status: 'corrupted_unrecoverable',
+      };
+    }
 
     const result = runControlledDataMigration(sourceData, seed, {
       backupAvailable: Boolean(backup),
@@ -2065,6 +2736,16 @@ export class LocalDemoRepository implements IDataRepository {
     });
 
     await this.saveAppData(result.migrated);
+
+    const finalStatus =
+      this.lastStorageWriteError ||
+      result.migrated.migrationMetadata?.persistedToStorage === false
+        ? 'storage_write_failed'
+        : result.migrated.migrationMetadata?.lastMigrationStatus || 'success';
+
+    if (result.migrated.migrationMetadata) {
+      result.migrated.migrationMetadata.lastMigrationStatus = finalStatus;
+    }
 
     return {
       data: result.migrated,
@@ -2074,7 +2755,7 @@ export class LocalDemoRepository implements IDataRepository {
         result.updatedBuiltinTopicsCount,
       preservedCustomCount: result.preservedCustomizationsCount,
       conflictsCount: result.conflicts.length,
-      status: result.migrated.migrationMetadata?.lastMigrationStatus || 'success',
+      status: finalStatus,
     };
   }
 
@@ -2096,6 +2777,8 @@ export class LocalDemoRepository implements IDataRepository {
       const parsed = JSON.parse(backup.rawState) as BuddyAppData;
       const check = validateMigratedAppData(parsed);
       if (!check.valid) return null;
+      this.corruptedStorageReadOnly = false;
+      this.lastStorageWriteError = null;
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
       return parsed;
     } catch {
@@ -2105,43 +2788,71 @@ export class LocalDemoRepository implements IDataRepository {
 
   getVersionDiagnostics(currentData?: BuddyAppData): VersionDiagnostics {
     const backup = this.readBackupEnvelope();
-    let storedAppVer = currentData?.appVersion;
-    let storedContentVer = currentData?.contentVersion ?? currentData?.seedContentVersion;
-    let storedSchemaVer = currentData?.schemaVersion;
+    let storedAppVer: string | undefined;
+    let storedContentVer: number | undefined;
+    let storedSchemaVer: number | undefined;
+    let rawParseable = false;
 
     if (typeof window !== 'undefined') {
       try {
         const raw = window.localStorage.getItem(STORAGE_KEY);
         if (raw) {
           const parsed = JSON.parse(raw) as Partial<BuddyAppData>;
-          storedAppVer = parsed.appVersion ?? storedAppVer;
-          storedContentVer = parsed.contentVersion ?? parsed.seedContentVersion ?? storedContentVer;
-          storedSchemaVer = parsed.schemaVersion ?? storedSchemaVer;
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            rawParseable = true;
+            storedAppVer = parsed.appVersion;
+            storedContentVer = parsed.contentVersion ?? parsed.seedContentVersion;
+            storedSchemaVer = parsed.schemaVersion;
+          }
         }
       } catch {
-        // Ignore parse error
+        rawParseable = false;
       }
     }
+
+    const meta = currentData?.migrationMetadata;
+    const isCorruptedReadOnly =
+      this.corruptedStorageReadOnly ||
+      meta?.storageReadOnlyRecoveryMode === true ||
+      meta?.lastMigrationStatus === 'corrupted_unrecoverable';
+
+    const isWriteFailed =
+      Boolean(this.lastStorageWriteError) ||
+      meta?.lastMigrationStatus === 'storage_write_failed' ||
+      meta?.persistedToStorage === false;
+
+    const persistedToStorage = !isCorruptedReadOnly && !isWriteFailed && rawParseable;
 
     return {
       appVersion: BUDDY_APP_VERSION,
       bundledContentVersion: SEED_CONTENT_VERSION,
       bundledSchemaVersion: BUDDY_DATA_SCHEMA_VERSION,
-      storedAppVersion: storedAppVer,
-      storedContentVersion: storedContentVer,
-      storedSchemaVersion: storedSchemaVer,
+      storedAppVersion: storedAppVer ?? (persistedToStorage ? currentData?.appVersion : undefined),
+      storedContentVersion:
+        storedContentVer ??
+        (persistedToStorage ? currentData?.contentVersion ?? currentData?.seedContentVersion : undefined),
+      storedSchemaVersion:
+        storedSchemaVer ?? (persistedToStorage ? currentData?.schemaVersion : undefined),
       buildTime: BUDDY_BUILD_TIME,
       gitCommit: BUDDY_GIT_COMMIT_SHORT,
       storageMode: this.getStorageMode(),
       storageKey: STORAGE_KEY,
       backupAvailable: Boolean(backup),
       backupCreatedAt: backup?.savedAt,
-      isContentUpToDate: storedContentVer === SEED_CONTENT_VERSION,
-      isSchemaUpToDate: storedSchemaVer === BUDDY_DATA_SCHEMA_VERSION,
+      isContentUpToDate:
+        persistedToStorage && storedContentVer === SEED_CONTENT_VERSION,
+      isSchemaUpToDate:
+        persistedToStorage && storedSchemaVer === BUDDY_DATA_SCHEMA_VERSION,
+      persistedToStorage,
+      storageReadOnlyRecoveryMode: isCorruptedReadOnly,
+      lastMigrationStatus: meta?.lastMigrationStatus,
+      lastErrorMessage: meta?.lastErrorMessage ?? this.lastStorageWriteError ?? undefined,
     };
   }
 
   async resetToSeedData(): Promise<BuddyAppData> {
+    this.corruptedStorageReadOnly = false;
+    this.lastStorageWriteError = null;
     const seed = createInitialSeedData();
     const freshSeed: BuddyAppData = {
       ...seed,
@@ -2151,6 +2862,8 @@ export class LocalDemoRepository implements IDataRepository {
         schemaVersion: BUDDY_DATA_SCHEMA_VERSION,
         lastMigratedAt: new Date().toISOString(),
         lastMigrationStatus: 'fresh_install',
+        persistedToStorage: true,
+        storageReadOnlyRecoveryMode: false,
         backupAvailable: false,
         updatedBuiltinTasksCount: seed.tasks.length,
         updatedBuiltinStoriesCount: seed.stories.length,

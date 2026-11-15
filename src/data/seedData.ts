@@ -7,11 +7,35 @@ import { DEFAULT_POINTS_POLICY, getCurrentMonthKey, getTodayDateKey } from '../s
  * - SEED_CONTENT_VERSION: System content library version (tasks, steps, stories, growth journey, schedule)
  * - BUDDY_DATA_SCHEMA_VERSION: Persistent storage schema version
  */
+declare const __BUDDY_BUILD_TIME__: string | undefined;
+declare const __BUDDY_GIT_COMMIT__: string | undefined;
+
+function resolveBuildTime(): string {
+  if (typeof __BUDDY_BUILD_TIME__ !== 'undefined' && __BUDDY_BUILD_TIME__) {
+    return __BUDDY_BUILD_TIME__;
+  }
+  if (typeof process !== 'undefined' && process.env?.VITE_BUILD_TIME) {
+    return process.env.VITE_BUILD_TIME;
+  }
+  return new Date().toISOString();
+}
+
+function resolveGitCommitShort(): string {
+  if (typeof __BUDDY_GIT_COMMIT__ !== 'undefined' && __BUDDY_GIT_COMMIT__) {
+    return __BUDDY_GIT_COMMIT__;
+  }
+  if (typeof process !== 'undefined') {
+    if (process.env?.VITE_GIT_COMMIT) return process.env.VITE_GIT_COMMIT.slice(0, 12);
+    if (process.env?.GITHUB_SHA) return process.env.GITHUB_SHA.slice(0, 7);
+  }
+  return 'local-preview';
+}
+
 export const BUDDY_APP_VERSION = '2.2.0';
 export const SEED_CONTENT_VERSION = 2026111501;
 export const BUDDY_DATA_SCHEMA_VERSION = 2;
-export const BUDDY_BUILD_TIME = '2026-11-15T01:00:00Z';
-export const BUDDY_GIT_COMMIT_SHORT = 'v2.2-main';
+export const BUDDY_BUILD_TIME = resolveBuildTime();
+export const BUDDY_GIT_COMMIT_SHORT = resolveGitCommitShort();
 
 export function createInitialSeedData(): BuddyAppData {
   const todayKey = getTodayDateKey();

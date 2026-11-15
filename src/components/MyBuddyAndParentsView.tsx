@@ -5312,6 +5312,18 @@ export const ParentDashboardView: React.FC<{ onBack: () => void }> = ({ onBack }
                       type="button"
                       onClick={async () => {
                         const res = await checkForContentUpdates();
+                        if (res.status === 'storage_write_failed') {
+                          setValidationError(
+                            'Đồng bộ trong bộ nhớ thành công nhưng chưa ghi được vào Local Storage (bộ nhớ trình duyệt đầy hoặc bị chặn). Dữ liệu gốc vẫn được giữ nguyên.'
+                          );
+                          return;
+                        }
+                        if (res.status === 'corrupted_unrecoverable') {
+                          setValidationError(
+                            'Dữ liệu gốc trong Local Storage đang bị lỗi định dạng và chưa có bản sao lưu. Hệ thống đang giữ nguyên khóa gốc ở Chế độ Bảo vệ.'
+                          );
+                          return;
+                        }
                         // Sync local task/topic drafts if currently open
                         const refreshedTask =
                           res.updatedCount >= 0
@@ -5331,7 +5343,11 @@ export const ParentDashboardView: React.FC<{ onBack: () => void }> = ({ onBack }
                       className="min-h-[42px] px-4 py-2 rounded-[16px] bg-[#3978F6] hover:bg-[#2968e6] text-white font-kids font-extrabold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-2xs"
                     >
                       <RefreshCw className="w-3.5 h-3.5 shrink-0" />
-                      <span>Kiểm tra cập nhật nội dung</span>
+                      <span>
+                        {versionDiagnostics.lastMigrationStatus === 'storage_write_failed'
+                          ? 'Thử lưu & đồng bộ lại'
+                          : 'Kiểm tra cập nhật nội dung'}
+                      </span>
                     </button>
 
                     {versionDiagnostics.backupAvailable && (
@@ -5358,6 +5374,28 @@ export const ParentDashboardView: React.FC<{ onBack: () => void }> = ({ onBack }
                   </div>
                 </div>
 
+                {/* Storage Write Failure or Corrupted Read-Only Protection Banner */}
+                {(versionDiagnostics.lastMigrationStatus === 'storage_write_failed' ||
+                  versionDiagnostics.storageReadOnlyRecoveryMode ||
+                  versionDiagnostics.lastMigrationStatus === 'corrupted_unrecoverable') && (
+                  <div className="rounded-2xl bg-rose-50 border border-rose-200 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                    <div className="flex items-start gap-2.5">
+                      <AlertTriangle className="w-4 h-4 text-rose-700 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-kids font-extrabold text-rose-950">
+                          {versionDiagnostics.storageReadOnlyRecoveryMode
+                            ? 'Chế độ Bảo vệ Dữ liệu Gốc (Không tự động ghi đè Local Storage)'
+                            : 'Chưa thể ghi dữ liệu mới vào Local Storage'}
+                        </p>
+                        <p className="text-rose-900/85 mt-0.5">
+                          {versionDiagnostics.lastErrorMessage ||
+                            'Dữ liệu mới đang chạy trong bộ nhớ tạm nhưng chưa được ghi bền vững vào Local Storage. Hệ thống giữ nguyên dữ liệu gốc và bản sao lưu.'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* 6 Required Version & Diagnostic Fields */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
                   <div className="rounded-xl bg-[#F7F9FD] border border-[#23324D]/8 p-3">
@@ -5376,8 +5414,20 @@ export const ParentDashboardView: React.FC<{ onBack: () => void }> = ({ onBack }
                     <p className="font-mono font-extrabold text-xs sm:text-sm text-[#3978F6] mt-0.5">
                       {versionDiagnostics.bundledContentVersion}
                     </p>
-                    <span className="block text-[10px] text-[#188050] font-bold">
-                      {versionDiagnostics.isContentUpToDate ? '✓ Đã đồng bộ' : 'Cần đồng bộ'}
+                    <span
+                      className={`block text-[10px] font-bold ${
+                        versionDiagnostics.isContentUpToDate
+                          ? 'text-[#188050]'
+                          : 'text-amber-700'
+                      }`}
+                    >
+                      {versionDiagnostics.isContentUpToDate
+                        ? '✓ Đã đồng bộ'
+                        : versionDiagnostics.storageReadOnlyRecoveryMode
+                        ? 'Bảo vệ dữ liệu gốc'
+                        : !versionDiagnostics.persistedToStorage
+                        ? 'Chưa lưu Local Storage'
+                        : 'Cần đồng bộ'}
                     </span>
                   </div>
 

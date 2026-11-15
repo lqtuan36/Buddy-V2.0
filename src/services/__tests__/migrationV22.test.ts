@@ -8,6 +8,9 @@ import {
 import {
   BACKUP_STORAGE_KEY,
   LocalDemoRepository,
+  prepareGrowthTopicForParentSave,
+  prepareStoryForParentSave,
+  prepareTaskForParentSave,
   resolveMigrationConflictInMemory,
   runControlledDataMigration,
   STORAGE_KEY,
@@ -714,7 +717,295 @@ async function runAllTests() {
     assert.equal(diagAfter.storedContentVersion, SEED_CONTENT_VERSION);
   });
 
-  console.log(`\n🎉 ALL ${results.length}/22 MANDATORY MIGRATION & VERSIONING TESTS PASSED!`);
+  // =========================================================================
+  // CASE 23 (Hardening #1): Phụ huynh chỉ phê duyệt nội dung cũ
+  // =========================================================================
+  await test('TC-23', 'Phụ huynh chỉ bấm phê duyệt nội dung cũ (khác seedData mới nhất) -> KHÔNG tạo customization metadata', () => {
+    const existingData = createInitialSeedData();
+    // Simulate older stored task, topic, and story that differ from the newest `seedData.ts`
+    const oldTask: Task = {
+      ...existingData.tasks[0],
+      subtitle: 'Mô tả hệ thống từ phiên bản trước',
+      customizedByParent: false,
+      customizedFields: [],
+      steps: existingData.tasks[0].steps.map((s, idx) =>
+        idx === 0
+          ? {
+              ...s,
+              actionTitle: 'Bước 1: Xem thời khóa biểu',
+              buddySpeech: 'Lời thoại hệ thống cũ của Bước 1',
+              customizedByParent: false,
+              customizedFields: [],
+            }
+          : s
+      ),
+    };
+
+    const taskSave = prepareTaskForParentSave(oldTask, { ...oldTask }, 'approved');
+    assert.equal(taskSave.actionType, 'approval');
+    assert.deepEqual(taskSave.sessionEditedFields, []);
+    assert.equal(taskSave.stampedTask.customizedByParent, false);
+    assert.deepEqual(taskSave.stampedTask.customizedFields, []);
+    assert.equal(taskSave.stampedTask.steps[0].customizedByParent, false);
+    assert.deepEqual(taskSave.stampedTask.steps[0].customizedFields, []);
+    assert.equal(taskSave.stampedTask.originStatus, 'builtin_approved_only');
+
+    const oldTopic: GrowthQualityTopic = {
+      ...existingData.growthTopics[0],
+      subtitle: 'Mô tả cũ của chặng Lòng biết ơn',
+      customizedByParent: false,
+      customizedFields: [],
+    };
+    const topicSave = prepareGrowthTopicForParentSave(oldTopic, {
+      ...oldTopic,
+      approvalStatus: 'approved',
+    });
+    assert.equal(topicSave.actionType, 'approval');
+    assert.deepEqual(topicSave.sessionEditedFields, []);
+    assert.equal(topicSave.stampedTopic.customizedByParent, false);
+    assert.deepEqual(topicSave.stampedTopic.customizedFields, []);
+
+    const oldStory: Story = {
+      ...existingData.stories[0],
+      summary: 'Tóm tắt cũ từ bản trước',
+      customizedByParent: false,
+      customizedFields: [],
+    };
+    const storySave = prepareStoryForParentSave(oldStory, {
+      ...oldStory,
+      approvedByParent: true,
+    });
+    assert.equal(storySave.actionType, 'approval');
+    assert.deepEqual(storySave.sessionEditedFields, []);
+    assert.equal(storySave.stampedStory.customizedByParent, false);
+    assert.deepEqual(storySave.stampedStory.customizedFields, []);
+  });
+
+  // =========================================================================
+  // CASE 24 (Hardening #2): Phụ huynh mở và lưu biểu mẫu mà không chỉnh sửa
+  // =========================================================================
+  await test('TC-24', 'Phụ huynh mở biểu mẫu và bấm Lưu mà không sửa trường nào -> giữ nguyên trạng thái gốc, không phát sinh customization', () => {
+    const existingTask = createInitialSeedData().tasks[1];
+    existingTask.steps[0].instruction = 'Hướng dẫn hệ thống từ bản trước khi mở form';
+    existingTask.customizedByParent = false;
+    existingTask.customizedFields = [];
+    existingTask.steps[0].customizedByParent = false;
+    existingTask.steps[0].customizedFields = [];
+
+    // Form clone submitted without any edits
+    const formClone: Task = JSON.parse(JSON.stringify(existingTask));
+    const res = prepareTaskForParentSave(existingTask, formClone, 'approved');
+
+    assert.equal(res.actionType, 'approval');
+    assert.deepEqual(res.sessionEditedFields, []);
+    assert.equal(res.stampedTask.customizedByParent, false);
+    assert.equal(res.stampedTask.steps[0].customizedByParent, false);
+    assert.deepEqual(res.stampedTask.steps[0].customizedFields, []);
+  });
+
+  // =========================================================================
+  // CASE 25 (Hardening #3): Phụ huynh chỉnh sửa 1 trường duy nhất trong biểu mẫu có nội dung cũ
+  // =========================================================================
+  await test('TC-25', 'Phụ huynh chỉ sửa 1 trường trong biểu mẫu chứa nội dung cũ -> chỉ đánh dấu đúng 1 trường đó là tùy chỉnh', () => {
+    const existingTask = createInitialSeedData().tasks[0];
+    // Suppose both actionTitle and buddySpeech had older text before opening the form
+    existingTask.steps[0].actionTitle = 'Bước 1: Xem thời khóa biểu ngày mai';
+    existingTask.steps[0].buddySpeech = 'Lời thoại hệ thống cũ trước khi mở form';
+    existingTask.steps[0].customizedByParent = false;
+    existingTask.steps[0].customizedFields = [];
+
+    // Parent opens form and ONLY edits `instruction` on Step 1
+    const formEdited: Task = JSON.parse(JSON.stringify(existingTask));
+    formEdited.steps[0].instruction =
+      'Mẹ dặn Minh Anh nhìn thời khóa biểu dán ở góc phải bàn học nhé!';
+
+    const saveRes = prepareTaskForParentSave(existingTask, formEdited, 'approved');
+    assert.equal(saveRes.actionType, 'customization');
+    assert.deepEqual(saveRes.sessionEditedFields, ['step-bp-1.instruction']);
+    assert.equal(saveRes.stampedTask.steps[0].customizedByParent, true);
+    assert.deepEqual(
+      saveRes.stampedTask.steps[0].customizedFields,
+      ['instruction'],
+      'Only the edited field (instruction) may be marked customized; actionTitle and buddySpeech must NOT be marked!'
+    );
+
+    // And when migration runs next, `actionTitle` and `buddySpeech` receive the new seed while `instruction` is preserved!
+    const storedAfterSave = createInitialSeedData();
+    storedAfterSave.tasks[0] = saveRes.stampedTask;
+    const { migrated } = runControlledDataMigration(storedAfterSave, createInitialSeedData());
+    assert.equal(
+      migrated.tasks[0].steps[0].instruction,
+      'Mẹ dặn Minh Anh nhìn thời khóa biểu dán ở góc phải bàn học nhé!'
+    );
+    assert.equal(
+      migrated.tasks[0].steps[0].actionTitle,
+      createInitialSeedData().tasks[0].steps[0].actionTitle
+    );
+    assert.equal(
+      migrated.tasks[0].steps[0].buddySpeech,
+      createInitialSeedData().tasks[0].steps[0].buddySpeech
+    );
+  });
+
+  // =========================================================================
+  // CASE 26 (Hardening #4): Migration thành công trong bộ nhớ nhưng localStorage.setItem thất bại
+  // =========================================================================
+  await test('TC-26', 'Migration hợp lệ trong bộ nhớ nhưng localStorage.setItem thất bại -> KHÔNG báo Đã đồng bộ, giữ dữ liệu gốc và cho phép thử lại', async () => {
+    const storage = new MockLocalStorage();
+    installMockWindow(storage);
+
+    const oldState = createInitialSeedData();
+    oldState.contentVersion = 2026111401;
+    oldState.seedContentVersion = 2026111401;
+    oldState.schemaVersion = 1;
+    const rawOldJson = JSON.stringify(oldState);
+    storage.setItem(STORAGE_KEY, rawOldJson);
+
+    // Simulate QuotaExceededError when writing migrated state to STORAGE_KEY
+    storage.throwOnSetKey = STORAGE_KEY;
+
+    const repo = new LocalDemoRepository();
+    const loaded = await repo.loadAppData();
+    const diagFailed = repo.getVersionDiagnostics(loaded);
+
+    assert.equal(loaded.migrationMetadata?.lastMigrationStatus, 'storage_write_failed');
+    assert.equal(loaded.migrationMetadata?.persistedToStorage, false);
+    assert.equal(
+      diagFailed.isContentUpToDate,
+      false,
+      'Must NOT report isContentUpToDate = true when localStorage write failed'
+    );
+    assert.equal(diagFailed.persistedToStorage, false);
+    assert.equal(
+      storage.getItem(STORAGE_KEY),
+      rawOldJson,
+      'Original stored state in STORAGE_KEY must remain intact'
+    );
+
+    // Clear write failure and retry via checkAndSyncContentUpdates
+    storage.throwOnSetKey = null;
+    const retryRes = await repo.checkAndSyncContentUpdates(loaded);
+    const diagAfterRetry = repo.getVersionDiagnostics(retryRes.data);
+
+    assert.equal(retryRes.status, 'no_op_up_to_date');
+    assert.equal(diagAfterRetry.persistedToStorage, true);
+    assert.equal(diagAfterRetry.isContentUpToDate, true);
+  });
+
+  // =========================================================================
+  // CASE 27 (Hardening #5): Dữ liệu JSON hỏng nhưng không có backup
+  // =========================================================================
+  await test('TC-27', 'Dữ liệu JSON hỏng nhưng KHÔNG có backup -> KHÔNG ghi đè khóa gốc bằng seed mặc định và chặn saveAppData ghi đè', async () => {
+    const storage = new MockLocalStorage();
+    installMockWindow(storage);
+
+    const rawCorrupted = '{"profile":{"displayName":"Bé Gia Huy"}, CORRUPTED_JSON_WITHOUT_BACKUP';
+    storage.setItem(STORAGE_KEY, rawCorrupted);
+
+    const repo = new LocalDemoRepository();
+    const loaded = await repo.loadAppData();
+    const diag = repo.getVersionDiagnostics(loaded);
+
+    assert.equal(loaded.migrationMetadata?.lastMigrationStatus, 'corrupted_unrecoverable');
+    assert.equal(loaded.migrationMetadata?.storageReadOnlyRecoveryMode, true);
+    assert.equal(diag.storageReadOnlyRecoveryMode, true);
+    assert.equal(diag.isContentUpToDate, false);
+    assert.equal(
+      storage.getItem(STORAGE_KEY),
+      rawCorrupted,
+      'loadAppData must NOT overwrite corrupted STORAGE_KEY with seed'
+    );
+
+    // Even if application calls saveAppData while in corrupted read-only mode, STORAGE_KEY must NOT be overwritten
+    await repo.saveAppData(loaded);
+    assert.equal(
+      storage.getItem(STORAGE_KEY),
+      rawCorrupted,
+      'saveAppData must NOT overwrite corrupted STORAGE_KEY while in protection mode'
+    );
+  });
+
+  // =========================================================================
+  // CASE 28 (Hardening #6): Nội dung cũ đã được đánh dấu sai là customized vẫn nhận được nội dung mới
+  // =========================================================================
+  await test('TC-28', 'Nội dung cũ bị đánh dấu sai customizedByParent: true (do lỗi phê duyệt cũ) tự phục hồi và nhận nội dung mới', () => {
+    const legacyFalseCustom = createInitialSeedData();
+    legacyFalseCustom.seedContentVersion = 2026111401;
+    // Simulate legacy false-positive `customizedByParent: true` (without customizedFields) from old approval flow
+    legacyFalseCustom.tasks[0].customizedByParent = true;
+    delete legacyFalseCustom.tasks[0].customizedFields;
+    legacyFalseCustom.tasks[0].steps[0].actionTitle = 'Bước 1: Xem thời khóa biểu ngày mai';
+    legacyFalseCustom.tasks[0].steps[0].buddySpeech = 'Lời thoại hệ thống cũ của Bước 1';
+    legacyFalseCustom.tasks[0].steps[0].customizedByParent = true;
+    delete legacyFalseCustom.tasks[0].steps[0].customizedFields;
+    legacyFalseCustom.parentApprovals.unshift({
+      id: 'approval-legacy-false-positive',
+      targetType: 'task',
+      targetId: 'task-backpack',
+      status: 'approved',
+      reviewedBy: 'Phụ huynh',
+      reviewedAt: new Date().toISOString(),
+      notes: 'Phê duyệt nhiệm vụ Chuẩn bị cặp sách',
+    });
+
+    const canonical = createInitialSeedData();
+    const { migrated } = runControlledDataMigration(legacyFalseCustom, canonical);
+    const bp = migrated.tasks.find((t) => t.id === 'task-backpack')!;
+
+    assert.equal(bp.customizedByParent, false, 'False positive customizedByParent must be healed');
+    assert.equal(bp.steps[0].customizedByParent, false);
+    assert.equal(bp.steps[0].actionTitle, canonical.tasks[0].steps[0].actionTitle);
+    assert.equal(bp.steps[0].buddySpeech, canonical.tasks[0].steps[0].buddySpeech);
+  });
+
+  // =========================================================================
+  // CASE 29 (Hardening #7): Khôi phục backup bảo toàn sao và tiến độ
+  // =========================================================================
+  await test('TC-29', 'Khôi phục từ bản sao lưu (restoreFromBackup) bảo toàn 100% sao, lịch sử nhiệm vụ và tiến độ của trẻ', async () => {
+    const storage = new MockLocalStorage();
+    installMockWindow(storage);
+
+    const preUpgradeState = createInitialSeedData();
+    preUpgradeState.contentVersion = 2026111401;
+    preUpgradeState.seedContentVersion = 2026111401;
+    preUpgradeState.schemaVersion = 1;
+    preUpgradeState.profile.displayName = 'Khánh Ngân';
+    preUpgradeState.starLedger.unshift({
+      id: 'star-backup-preserve-1',
+      childId: 'child-minh-anh',
+      dateKey: '2026-11-15',
+      monthKey: '2026-11',
+      amount: 7,
+      sourceType: 'task_completion',
+      sourceId: 'task-backpack',
+      idempotencyKey: 'backup-star-1',
+      title: 'Hoàn thành xuất sắc',
+      note: 'Bảo toàn qua backup',
+      createdAt: new Date().toISOString(),
+    });
+    preUpgradeState.growthTopics[0].experiences[0].status = 'experienced';
+    preUpgradeState.growthTopics[0].experiences[0].childResponse = 'Con cảm ơn mẹ đã nấu cơm ngon!';
+
+    storage.setItem(STORAGE_KEY, JSON.stringify(preUpgradeState));
+
+    const repo = new LocalDemoRepository();
+    // 1. Trigger version upgrade which automatically writes bounded backup
+    await repo.loadAppData();
+    assert.ok(storage.getItem(BACKUP_STORAGE_KEY), 'Pre-migration backup must exist');
+
+    // 2. Restore from backup and verify 100% of stars and progress
+    const restored = await repo.restoreFromBackup();
+    assert.ok(restored, 'restoreFromBackup must return restored state');
+    assert.equal(restored.profile.displayName, 'Khánh Ngân');
+    assert.ok(restored.starLedger.some((tx) => tx.id === 'star-backup-preserve-1' && tx.amount === 7));
+    assert.equal(restored.growthTopics[0].experiences[0].status, 'experienced');
+    assert.equal(
+      restored.growthTopics[0].experiences[0].childResponse,
+      'Con cảm ơn mẹ đã nấu cơm ngon!'
+    );
+  });
+
+  console.log(`\n🎉 ALL ${results.length}/29 MANDATORY MIGRATION & HARDENING TESTS PASSED!`);
 }
 
 runAllTests().catch((err) => {

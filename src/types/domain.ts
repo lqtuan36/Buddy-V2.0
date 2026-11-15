@@ -530,7 +530,15 @@ export interface MigrationMetadata {
   previousContentVersion?: number;
   previousSchemaVersion?: number;
   lastMigratedAt: string;
-  lastMigrationStatus: 'success' | 'no_op_up_to_date' | 'failed_kept_previous' | 'fresh_install';
+  lastMigrationStatus:
+    | 'success'
+    | 'no_op_up_to_date'
+    | 'failed_kept_previous'
+    | 'storage_write_failed'
+    | 'corrupted_unrecoverable'
+    | 'fresh_install';
+  persistedToStorage?: boolean;
+  storageReadOnlyRecoveryMode?: boolean;
   lastErrorMessage?: string;
   backupAvailable: boolean;
   backupCreatedAt?: string;

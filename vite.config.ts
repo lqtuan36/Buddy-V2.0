@@ -5,17 +5,26 @@ import path from 'path';
 import { defineConfig } from 'vite';
 
 function resolveShortGitCommit(): string {
+  if (process.env.VITE_GIT_COMMIT && process.env.VITE_GIT_COMMIT.trim()) {
+    return process.env.VITE_GIT_COMMIT.trim().slice(0, 12);
+  }
+  if (process.env.GITHUB_SHA && process.env.GITHUB_SHA.trim()) {
+    return process.env.GITHUB_SHA.trim().slice(0, 7);
+  }
   try {
     return execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
       .toString()
       .trim();
   } catch {
-    return process.env.GITHUB_SHA ? process.env.GITHUB_SHA.slice(0, 7) : 'v2.2-local';
+    return 'local-preview';
   }
 }
 
 export default defineConfig(() => {
-  const buildTime = new Date().toISOString();
+  const buildTime =
+    process.env.VITE_BUILD_TIME && process.env.VITE_BUILD_TIME.trim()
+      ? process.env.VITE_BUILD_TIME.trim()
+      : new Date().toISOString();
   const gitCommit = resolveShortGitCommit();
 
   return {
